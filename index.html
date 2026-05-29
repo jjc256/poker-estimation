@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Poker Estimation Trainer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <p class="eyebrow">Rapid-fire poker math</p>
+        <h1>Estimate the call in seconds.</h1>
+        <p>
+          Drill outs, discounted outs, pot odds, implied odds, and call decisions with a simple two-mode trainer.
+        </p>
+      </section>
+
+      <section class="mode-card" aria-labelledby="mode-title">
+        <div>
+          <p class="eyebrow">Mode</p>
+          <h2 id="mode-title">Choose your pace</h2>
+        </div>
+        <div class="mode-toggle" role="group" aria-label="Training mode">
+          <button id="stepMode" class="active" type="button">Step by step</button>
+          <button id="wholeMode" type="button">Whole thing</button>
+        </div>
+      </section>
+
+      <section class="practice-card">
+        <div class="scenario-header">
+          <div>
+            <p class="eyebrow">Situation</p>
+            <h2 id="scenarioTitle">Loading drill…</h2>
+          </div>
+          <button id="newHand" class="secondary" type="button">New hand</button>
+        </div>
+
+        <div id="scenarioFacts" class="facts-grid" aria-live="polite"></div>
+
+        <div id="stepProgress" class="step-progress" aria-label="Step progress"></div>
+
+        <form id="answerForm" class="answer-panel">
+          <label id="answerLabel" for="answerInput">Answer</label>
+          <div id="inputSlot" class="input-row"></div>
+          <button class="primary" type="submit">Check</button>
+        </form>
+
+        <div id="feedback" class="feedback" aria-live="polite"></div>
+      </section>
+
+      <section class="reference-card">
+        <h2>Keep it simple</h2>
+        <ul>
+          <li>Use the rule of 2 on the river and the rule of 4 when two cards remain.</li>
+          <li>Discount outs for paired boards, dominated draws, dirty overcards, and aggressive opponents.</li>
+          <li>Call when your equity plus realistic implied value beats the price.</li>
+        </ul>
+      </section>
+    </main>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>
