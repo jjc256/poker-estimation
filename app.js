@@ -13,7 +13,7 @@ const steps = [
     suffix: "outs",
     tolerance: 1,
     answer: (hand) => hand.discountedOuts,
-    hint: "Remove dirty cards for paired boards, dominated pairs, and reverse implied odds."
+    hint: "Remove dirty cards for paired boards, dominated pairs, and reverse risk."
   },
   {
     key: "drawEquity",
@@ -32,20 +32,12 @@ const steps = [
     hint: "Call divided by final pot after you call."
   },
   {
-    key: "impliedOdds",
-    label: "Estimate implied-odds break-even equity.",
-    suffix: "%",
-    tolerance: 3,
-    answer: (hand) => impliedOddsFor(hand),
-    hint: "Add realistic future payoff from the effective stack and opponent style, then divide call by that larger final pot."
-  },
-  {
     key: "decision",
     label: "Should you call?",
     suffix: "",
     tolerance: 0,
     answer: (hand) => shouldCallFor(hand) ? "call" : "fold",
-    hint: "Call when discounted-out equity is at least the implied-odds break-even price."
+    hint: "Call when your estimated equity is at least the direct price the pot is laying."
   }
 ];
 
@@ -64,10 +56,9 @@ const hands = [
     heroStack: 220,
     opponentStack: 220,
     opponent: "Loose-passive Villain: pays off one-pair hands too often",
-    expectedFutureWin: 18,
     outs: 9,
     discountedOuts: 9,
-    note: "All nine spades are clean on the unpaired board and this is the nut-flush draw. The turn equity is about 18%, while even a loose payoff assumption only lowers the break-even point to about 22%, so the price is still too high."
+    note: "All nine spades are clean on the unpaired board and this is the nut-flush draw. The turn equity is about 18%, below the 25% direct price, so the disciplined table decision is a fold."
   },
   {
     title: "Flop open-ender with deep stacks",
@@ -83,10 +74,9 @@ const hands = [
     heroStack: 300,
     opponentStack: 285,
     opponent: "Aggressive regular Villain: barrels often but can fold scary rivers",
-    expectedFutureWin: 30,
     outs: 8,
     discountedOuts: 7,
-    note: "The straight has eight raw outs, discounted to seven because action can dry up or reverse-implied spots can appear. Seven flop outs are about 28% equity, comfortably above the implied break-even price."
+    note: "The straight has eight raw outs, discounted to seven because action can dry up or tough future spots can appear. Seven flop outs are about 28% equity, comfortably above the 20% direct price."
   },
   {
     title: "Dominated overcards on a wet flop",
@@ -102,10 +92,9 @@ const hands = [
     heroStack: 180,
     opponentStack: 170,
     opponent: "Tight value-bettor Villain: strong range, rarely pays missed top pair",
-    expectedFutureWin: 0,
     outs: 6,
     discountedOuts: 3,
-    note: "The six raw overcard outs are discounted hard because top pair can still be dominated and the wet board creates reverse implied odds. With only about 12% discounted equity and no realistic future payoff, this is a fold."
+    note: "The six raw overcard outs are discounted hard because top pair can still be dominated and the wet board creates reverse risk. With only about 12% discounted equity and no realistic future help, this is a fold."
   },
   {
     title: "Combo draw against a station",
@@ -121,13 +110,12 @@ const hands = [
     heroStack: 360,
     opponentStack: 340,
     opponent: "Calling-station Villain: hates folding made hands",
-    expectedFutureWin: 60,
     outs: 15,
     discountedOuts: 13,
-    note: "After removing overlap and a couple dirty cards, thirteen discounted flop outs are still about 52% equity. The station's stack and payoff tendency add implied value, so the call is clear."
+    note: "After removing overlap and a couple dirty cards, thirteen discounted flop outs are still about 52% equity. That crushes the 25% direct price, so the call is clear."
   },
   {
-    title: "Gutshot with bad implied odds",
+    title: "Gutshot facing a big turn bet",
     hero: "7♦ 6♦",
     board: "A♣ 5♠ 4♥ K♠",
     potStart: 55,
@@ -140,10 +128,9 @@ const hands = [
     heroStack: 160,
     opponentStack: 155,
     opponent: "Nit Villain: folds when the obvious straight completes",
-    expectedFutureWin: 0,
     outs: 4,
     discountedOuts: 3,
-    note: "The gutshot starts at four raw outs but one completion is discounted for poor payoff and reverse-implied risk. Three turn outs are only about 6% equity, far below the price."
+    note: "The gutshot starts at four raw outs but one completion is discounted for poor realization and reverse risk. Three turn outs are only about 6% equity, far below the price."
   },
   {
     title: "Nut-flush draw with fold-proof villain",
@@ -159,10 +146,9 @@ const hands = [
     heroStack: 240,
     opponentStack: 210,
     opponent: "Splashy whale Villain: overcalls rivers with any king",
-    expectedFutureWin: 20,
     outs: 9,
     discountedOuts: 9,
-    note: "The nut-flush draw keeps all nine outs. Eighteen percent turn equity is slightly under the direct 20% price, but a fold-proof opponent with stack behind supplies enough realistic payoff to call."
+    note: "The nut-flush draw keeps all nine outs. Eighteen percent turn equity is close, but it is still under the 20% direct price, so this drill marks the table decision as a fold."
   }
 ];
 
@@ -170,7 +156,6 @@ const state = {
   mode: "step",
   handIndex: randomHandIndex(),
   stepIndex: 0,
-  wholeAnswers: {},
   selectedDecision: "",
   stepAwaitingNext: false
 };
@@ -238,20 +223,8 @@ function potOddsFor(hand) {
   return Math.round((hand.call / (hand.pot + hand.call)) * 100);
 }
 
-function effectiveStackBehindAfterCall(hand) {
-  return Math.max(0, Math.min(hand.heroStack - hand.call, hand.opponentStack));
-}
-
-function futurePayoffFor(hand) {
-  return Math.min(hand.expectedFutureWin, effectiveStackBehindAfterCall(hand));
-}
-
-function impliedOddsFor(hand) {
-  return Math.round((hand.call / (hand.pot + hand.call + futurePayoffFor(hand))) * 100);
-}
-
 function shouldCallFor(hand) {
-  return drawEquityFor(hand) >= impliedOddsFor(hand);
+  return drawEquityFor(hand) >= potOddsFor(hand);
 }
 
 function render() {
@@ -286,76 +259,56 @@ function boardLabelFor(hand) {
 }
 
 function tableFor(hand) {
-  const finalPot = hand.pot + hand.call;
-  const effectiveBehind = effectiveStackBehindAfterCall(hand);
   const villainStyle = hand.opponent.replace(/^.*?Villain:\s*/, "");
 
   return `
     <section class="poker-table" aria-label="Poker table situation">
+      <div class="felt-ring" aria-hidden="true"></div>
+
       <article class="seat seat-villain" aria-label="Villain seat">
-        <div class="seat-header">
-          <div>
-            <p class="player-name">Villain</p>
-            <span class="player-style">${villainStyle}</span>
-          </div>
-          <span class="stack-badge">Stack ${money(hand.opponentStack)}</span>
+        <div class="dealer-button" aria-label="Dealer button">D</div>
+        <div class="avatar" aria-hidden="true">V</div>
+        <div class="player-panel">
+          <p class="player-name">Villain</p>
+          <span class="player-stack">${money(hand.opponentStack)}</span>
+          <span class="player-style">${villainStyle}</span>
         </div>
-        <div class="hole-cards" aria-hidden="true">
+        <div class="hole-cards villain-cards" aria-hidden="true">
           <span class="card back">?</span><span class="card back">?</span>
         </div>
-        <div class="bet-row">
-          <span>Current bet</span>
-          <span class="chips"><span class="chip-dot"></span>${money(hand.opponentBetThisStreet)}</span>
+        <div class="bet-chip-stack villain-bet" aria-label="Villain bet ${money(hand.opponentBetThisStreet)}">
+          <span class="chip-stack" aria-hidden="true"><span></span><span></span><span></span></span>
+          <strong>${money(hand.opponentBetThisStreet)}</strong>
         </div>
       </article>
 
       <article class="board-zone" aria-label="Board and pot">
         <div class="board-topline">
           <span class="street-badge">${hand.street}</span>
-          <span class="call-badge">Hero calls ${money(hand.call)}</span>
+          <span class="action-badge">Facing bet</span>
         </div>
-        <span class="pot-label">Pot now</span>
-        <p class="pot-number">${money(hand.pot)}</p>
         <div class="board-cards" aria-label="${boardLabelFor(hand)}">${cardsMarkup(hand.board)}</div>
+        <div class="pot-display" aria-label="Pot ${money(hand.pot)}">
+          <span class="pot-label">Pot</span>
+          <strong class="pot-number">${money(hand.pot)}</strong>
+        </div>
+        <p class="table-action">${hand.action}</p>
       </article>
 
       <article class="seat seat-hero" aria-label="Hero seat">
-        <div class="seat-header">
-          <div>
-            <p class="player-name">Hero</p>
-            <span class="player-style">Effective behind after call: ${money(effectiveBehind)}</span>
-          </div>
-          <span class="stack-badge">Stack ${money(hand.heroStack)}</span>
+        <div class="avatar hero-avatar" aria-hidden="true">H</div>
+        <div class="player-panel">
+          <p class="player-name">Hero</p>
+          <span class="player-stack">${money(hand.heroStack)}</span>
+          <span class="player-style">To act</span>
         </div>
         <div class="hole-cards" aria-label="Hero hole cards">${cardsMarkup(hand.hero)}</div>
-        <div class="bet-row">
-          <span>In this street</span>
-          <span class="chips"><span class="chip-dot"></span>${money(hand.heroBetThisStreet)}</span>
+        <div class="bet-chip-stack hero-bet ${hand.heroBetThisStreet === 0 ? "is-empty" : ""}" aria-label="Hero committed ${money(hand.heroBetThisStreet)} this street">
+          <span class="chip-stack" aria-hidden="true"><span></span><span></span></span>
+          <strong>${money(hand.heroBetThisStreet)}</strong>
         </div>
+        <div class="decision-prompt" aria-label="Amount to call">Call ${money(hand.call)}</div>
       </article>
-
-      <div class="pot-metrics" aria-label="Pot and stack metrics">
-        <div class="metric-card">
-          <span class="metric-label">Start pot</span>
-          <strong>${money(hand.potStart)}</strong>
-        </div>
-        <div class="metric-card">
-          <span class="metric-label">Call amount</span>
-          <strong>${money(hand.call)}</strong>
-        </div>
-        <div class="metric-card">
-          <span class="metric-label">Final pot</span>
-          <strong>${money(finalPot)}</strong>
-        </div>
-        <div class="metric-card">
-          <span class="metric-label">Direct price</span>
-          <strong>${potOddsFor(hand)}%</strong>
-        </div>
-        <div class="metric-card">
-          <span class="metric-label">Implied payoff</span>
-          <strong>${money(futurePayoffFor(hand))}</strong>
-        </div>
-      </div>
     </section>
   `;
 }
@@ -386,8 +339,7 @@ function renderWholeMode(hand) {
     <input id="outsInput" name="outs" type="number" min="0" step="1" inputmode="numeric" placeholder="Raw outs" aria-label="Raw outs" required />
     <input id="discountedOutsInput" name="discountedOuts" type="number" min="0" step="0.5" inputmode="decimal" placeholder="Discounted outs" aria-label="Discounted outs" required />
     <input id="drawEquityInput" name="drawEquity" type="number" min="0" step="1" inputmode="numeric" placeholder="Discounted equity %" aria-label="Discounted equity percent" required />
-    <input id="potOddsInput" name="potOdds" type="number" min="0" step="1" inputmode="numeric" placeholder="Direct price %" aria-label="Direct pot odds percent" required />
-    <input id="impliedOddsInput" name="impliedOdds" type="number" min="0" step="1" inputmode="numeric" placeholder="Implied break-even %" aria-label="Implied odds break-even percent" required />
+    <input id="potOddsInput" name="potOdds" type="number" min="0" step="1" inputmode="numeric" placeholder="Pot price %" aria-label="Direct pot odds percent" required />
     ${decisionChoices("wholeDecision")}
   `;
   state.selectedDecision = "";
@@ -395,7 +347,7 @@ function renderWholeMode(hand) {
   elements.submitButton.textContent = "Check";
   setAnswerControlsDisabled(false);
   elements.feedback.className = "feedback";
-  elements.feedback.innerHTML = `<strong>Rapid-fire:</strong> Fill all six answers, then check the hand once.`;
+  elements.feedback.innerHTML = `<strong>Rapid-fire:</strong> Fill the table-read answers, then check the hand once.`;
   focusFirstInput();
 }
 
@@ -405,7 +357,6 @@ function labelForPill(key) {
     discountedOuts: "Discount",
     drawEquity: "Equity",
     potOdds: "Price",
-    impliedOdds: "Implied",
     decision: "Call?"
   }[key];
 }
@@ -476,7 +427,6 @@ function checkWholeAnswers(formData) {
     discountedOuts: Number(formData.get("discountedOuts")),
     drawEquity: Number(formData.get("drawEquity")),
     potOdds: Number(formData.get("potOdds")),
-    impliedOdds: Number(formData.get("impliedOdds")),
     decision: state.selectedDecision
   };
 
@@ -530,11 +480,8 @@ function explanationFor(step, hand, expected) {
   if (step.key === "potOdds") {
     return `$${hand.call} / ($${hand.pot} + $${hand.call}) ≈ ${expected}%.`;
   }
-  if (step.key === "impliedOdds") {
-    return `$${hand.call} / ($${hand.pot} + $${hand.call} + $${futurePayoffFor(hand)} stack-and-style payoff) ≈ ${expected}%.`;
-  }
   if (step.key === "decision") {
-    return `${drawEquityFor(hand)}% discounted-out equity vs ${impliedOddsFor(hand)}% implied break-even price. ${hand.note}`;
+    return `${drawEquityFor(hand)}% discounted-out equity vs ${potOddsFor(hand)}% direct pot price. ${hand.note}`;
   }
   return hand.note;
 }
