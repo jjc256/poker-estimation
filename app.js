@@ -11,6 +11,7 @@ const opponentProfiles = [
 ];
 
 const betFractions = [0.25, 0.33, 0.5, 0.66, 0.75, 1];
+const cleanOutMinimumCleanliness = 0.75;
 
 const steps = [
   {
@@ -19,7 +20,7 @@ const steps = [
     suffix: "outs",
     tolerance: 1,
     answer: (hand) => cleanOutsFor(hand),
-    hint: "Count unseen turn/river cards that turn Hero from not winning into an outright winner against the dealt Villain hand."
+    hint: "Count next cards that make a strong enough winner to be clean against plausible hidden Villain hands."
   },
   {
     key: "discountedOuts",
@@ -216,7 +217,8 @@ function cleanOutsFor(hand) {
 function cleanOutCardsFor(hand) {
   return nextCardOutcomes(hand)
     .filter(({ completesDraw, currentResult, result }) => result > 0 && (currentResult <= 0 || completesDraw))
-    .map(({ card }) => card);
+    .map(({ card }) => card)
+    .filter((card) => outCleanlinessFor(hand, card) >= cleanOutMinimumCleanliness);
 }
 
 function completesDraw(currentHeroHand, nextHeroHand) {
@@ -681,7 +683,7 @@ function evaluateAnswer(step, expected, received) {
 
 function explanationFor(step, hand, expected) {
   if (step.key === "outs") {
-    return `${expected} unseen cards turn Hero from not winning into an outright winner on the next street.`;
+    return `${expected} unseen cards make a winner that is clean against plausible hidden Villain hands.`;
   }
   if (step.key === "discountedOuts") {
     return `Each listed out is weighted by how often it stays good against possible hidden Villain holdings, for ${expected} discounted outs.`;

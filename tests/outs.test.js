@@ -128,6 +128,16 @@ const straightDrawAlreadyAhead = {
 assert.deepEqual(Array.from(context.__poker.cleanOutCardsFor(straightDrawAlreadyAhead)).sort(), ["6♠", "6♥", "6♦", "6♣"].sort());
 assert.equal(context.__poker.cleanOutsFor(straightDrawAlreadyAhead), 4);
 
+const weakPairNotClean = {
+  heroCards: ["T♥", "3♦"],
+  villainCards: ["Q♥", "J♥"],
+  boardCards: ["9♦", "2♣", "K♦", "4♣"]
+};
+
+assert.deepEqual(Array.from(context.__poker.cleanOutCardsFor(weakPairNotClean)), []);
+assert.equal(context.__poker.cleanOutsFor(weakPairNotClean), 0);
+assert.equal(context.__poker.discountedOutsFor(weakPairNotClean), 0);
+
 const dirtyAceOuts = {
   heroCards: ["A♠", "3♣"],
   villainCards: ["K♦", "J♦"],
