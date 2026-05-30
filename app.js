@@ -51,11 +51,11 @@ const hands = [
     street: "Turn",
     opponent: "Loose-passive: pays off one-pair hands too often",
     outs: 9,
-    discountedOuts: 8,
+    discountedOuts: 9,
     potOdds: 25,
     impliedOdds: 22,
     shouldCall: false,
-    note: "The flush draw is close, but one dirty spade and only one card to come make the price slightly too high."
+    note: "All nine spades are clean on an unpaired board with the nut-flush draw; with only one card to come, the price is still slightly too high without enough implied value."
   },
   {
     title: "Flop open-ender with deep stacks",
@@ -137,6 +137,8 @@ const hands = [
 const state = {
   mode: "step",
   handIndex: 0,
+  handOrder: [],
+  handOrderCursor: 0,
   stepIndex: 0,
   wholeAnswers: {},
   selectedDecision: "",
@@ -162,7 +164,25 @@ function currentHand() {
 }
 
 function nextHandIndex() {
-  return (state.handIndex + 1) % hands.length;
+  if (state.handOrderCursor >= state.handOrder.length) {
+    state.handOrder = shuffledHandIndexes(state.handIndex);
+    state.handOrderCursor = 0;
+  }
+
+  const nextIndex = state.handOrder[state.handOrderCursor];
+  state.handOrderCursor += 1;
+  return nextIndex;
+}
+
+function shuffledHandIndexes(excludedIndex = null) {
+  const indexes = hands.map((_, index) => index).filter((index) => index !== excludedIndex);
+
+  for (let index = indexes.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [indexes[index], indexes[randomIndex]] = [indexes[randomIndex], indexes[index]];
+  }
+
+  return indexes.length ? indexes : hands.map((_, index) => index);
 }
 
 function render() {
@@ -418,4 +438,5 @@ elements.answerForm.addEventListener("submit", (event) => {
   }
 });
 
-resetHand(0);
+state.handOrder = shuffledHandIndexes();
+resetHand(nextHandIndex());
