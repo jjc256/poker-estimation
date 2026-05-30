@@ -168,9 +168,7 @@ const hands = [
 
 const state = {
   mode: "step",
-  handIndex: 0,
-  handOrder: [],
-  handOrderCursor: 0,
+  handIndex: randomHandIndex(),
   stepIndex: 0,
   wholeAnswers: {},
   selectedDecision: "",
@@ -196,25 +194,35 @@ function currentHand() {
 }
 
 function nextHandIndex() {
-  if (state.handOrderCursor >= state.handOrder.length) {
-    state.handOrder = shuffledHandIndexes(state.handIndex);
-    state.handOrderCursor = 0;
-  }
-
-  const nextIndex = state.handOrder[state.handOrderCursor];
-  state.handOrderCursor += 1;
-  return nextIndex;
+  return randomHandIndex(state.handIndex);
 }
 
-function shuffledHandIndexes(excludedIndex = null) {
-  const indexes = hands.map((_, index) => index).filter((index) => index !== excludedIndex);
+function randomHandIndex(excludedIndex = null) {
+  const candidateIndexes = hands
+    .map((_, index) => index)
+    .filter((index) => hands.length === 1 || index !== excludedIndex);
 
-  for (let index = indexes.length - 1; index > 0; index -= 1) {
-    const randomIndex = Math.floor(Math.random() * (index + 1));
-    [indexes[index], indexes[randomIndex]] = [indexes[randomIndex], indexes[index]];
+  return candidateIndexes[randomInteger(candidateIndexes.length)];
+}
+
+function randomInteger(maxExclusive) {
+  if (!Number.isInteger(maxExclusive) || maxExclusive <= 0) {
+    throw new Error("randomInteger requires a positive integer maximum.");
   }
 
-  return indexes.length ? indexes : hands.map((_, index) => index);
+  const cryptoObject = globalThis.crypto;
+  if (cryptoObject?.getRandomValues) {
+    const rangeLimit = 0x100000000 - (0x100000000 % maxExclusive);
+    const randomValues = new Uint32Array(1);
+
+    do {
+      cryptoObject.getRandomValues(randomValues);
+    } while (randomValues[0] >= rangeLimit);
+
+    return randomValues[0] % maxExclusive;
+  }
+
+  return Math.floor(Math.random() * maxExclusive);
 }
 
 function cardsToCome(hand) {
@@ -511,5 +519,4 @@ elements.answerForm.addEventListener("submit", (event) => {
   }
 });
 
-state.handOrder = shuffledHandIndexes();
-resetHand(nextHandIndex());
+resetHand();
