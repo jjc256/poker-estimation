@@ -19,7 +19,7 @@ const steps = [
     suffix: "outs",
     tolerance: 1,
     answer: (hand) => cleanOutsFor(hand),
-    hint: "Count unseen turn/river cards that leave Hero winning or tied against the dealt Villain hand."
+    hint: "Count unseen turn/river cards that improve Hero's hand and leave Hero winning or tied against the dealt Villain hand."
   },
   {
     key: "discountedOuts",
@@ -35,7 +35,7 @@ const steps = [
     suffix: "%",
     tolerance: 1,
     answer: (hand) => drawEquityFor(hand),
-    hint: "Use exact discounted outs divided by the unseen deck. Do not use a rule-of-2 or rule-of-4 shortcut for the target."
+    hint: "Use exact next-card wins and half-credit ties divided by the unseen deck. Do not use a rule-of-2 or rule-of-4 shortcut for the target."
   },
   {
     key: "potOdds",
@@ -180,24 +180,32 @@ function remainingDeckFor(hand) {
 }
 
 function nextCardOutcomes(hand) {
+  const currentHeroHand = evaluateHand([...hand.heroCards, ...hand.boardCards]);
+
   return remainingDeckFor(hand).map((nextCard) => {
     const nextBoard = [...hand.boardCards, nextCard];
+    const nextHeroHand = evaluateHand([...hand.heroCards, ...nextBoard]);
     const result = compareHands(
-      evaluateHand([...hand.heroCards, ...nextBoard]),
+      nextHeroHand,
       evaluateHand([...hand.villainCards, ...nextBoard])
     );
 
-    return { card: nextCard, result };
+    return {
+      card: nextCard,
+      improvesHero: compareHands(nextHeroHand, currentHeroHand) > 0,
+      result
+    };
   });
 }
 
 function cleanOutsFor(hand) {
-  return nextCardOutcomes(hand).filter(({ result }) => result >= 0).length;
+  return nextCardOutcomes(hand).filter(({ improvesHero, result }) => improvesHero && result >= 0).length;
 }
 
 function discountedOutsFor(hand) {
   const outcomes = nextCardOutcomes(hand);
-  const discountedOuts = outcomes.reduce((total, { result }) => {
+  const discountedOuts = outcomes.reduce((total, { improvesHero, result }) => {
+    if (!improvesHero) return total;
     if (result > 0) return total + 1;
     if (result === 0) return total + 0.5;
     return total;
@@ -207,7 +215,14 @@ function discountedOutsFor(hand) {
 }
 
 function drawEquityFor(hand) {
-  return roundToTenth((discountedOutsFor(hand) / remainingDeckFor(hand).length) * 100);
+  const outcomes = nextCardOutcomes(hand);
+  const equity = outcomes.reduce((total, { result }) => {
+    if (result > 0) return total + 1;
+    if (result === 0) return total + 0.5;
+    return total;
+  }, 0);
+
+  return roundToTenth((equity / outcomes.length) * 100);
 }
 
 function potOddsFor(hand) {
@@ -337,11 +352,13 @@ function noteFor(hand) {
   const wins = outcomes.filter(({ result }) => result > 0).length;
   const ties = outcomes.filter(({ result }) => result === 0).length;
   const losses = outcomes.length - wins - ties;
+  const cleanOuts = cleanOutsFor(hand);
+  const discountedOuts = discountedOutsFor(hand);
   const equity = drawEquityFor(hand);
   const price = impliedOddsFor(hand);
   const decision = shouldCallFor(hand) ? "call" : "fold";
 
-  return `Villain was dealt ${hand.villain}. ${wins} next cards win, ${ties} tie, and ${losses} lose against that hand. That is ${discountedOutsFor(hand)} discounted outs from ${outcomes.length} unseen cards, or ${equity}% exact next-card equity. The implied break-even price is ${price}%, so this is a ${decision}.`;
+  return `Villain was dealt ${hand.villain}. ${cleanOuts} next cards improve Hero and leave Hero winning or tied, worth ${discountedOuts} discounted outs. For equity, ${wins} next cards win, ${ties} tie, and ${losses} lose from ${outcomes.length} unseen cards, or ${equity}% exact next-card equity. The implied break-even price is ${price}%, so this is a ${decision}.`;
 }
 
 function render() {
@@ -593,13 +610,13 @@ function evaluateAnswer(step, expected, received) {
 
 function explanationFor(step, hand, expected) {
   if (step.key === "outs") {
-    return `${expected} unseen cards leave Hero winning or tied on the next street.`;
+    return `${expected} unseen cards improve Hero and leave Hero winning or tied on the next street.`;
   }
   if (step.key === "discountedOuts") {
-    return `Wins count as 1 out and ties count as 0.5 outs, for ${expected} discounted outs.`;
+    return `Clean improving wins count as 1 out and clean improving ties count as 0.5 outs, for ${expected} discounted outs.`;
   }
   if (step.key === "drawEquity") {
-    return `${discountedOutsFor(hand)} discounted outs / ${remainingDeckFor(hand).length} unseen cards = ${expected}%.`;
+    return `All next-card wins and ties from ${remainingDeckFor(hand).length} unseen cards = ${expected}%.`;
   }
   if (step.key === "potOdds") {
     return `${money(hand.call)} / (${money(hand.pot)} + ${money(hand.call)}) = ${expected}%.`;

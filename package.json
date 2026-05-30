@@ -5,6 +5,6 @@
   "description": "Rapid-fire poker estimation drills with random hands, exact outs, pot odds, implied odds, and call decisions.",
   "scripts": {
     "start": "python3 -m http.server 4173",
-    "test": "node --check app.js"
+    "test": "node --check app.js && node tests/outs.test.js"
   }
 }
