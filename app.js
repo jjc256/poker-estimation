@@ -35,7 +35,7 @@ const steps = [
     suffix: "%",
     tolerance: 1,
     answer: (hand) => drawEquityFor(hand),
-    hint: "Use exact next-card wins and half-credit ties divided by the unseen deck. Do not use a rule-of-2 or rule-of-4 shortcut for the target."
+    hint: "Use the rule of 2 to estimate next-card equity from your outs, then compare against the exact target."
   },
   {
     key: "potOdds",
