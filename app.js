@@ -31,11 +31,11 @@ const steps = [
   },
   {
     key: "drawEquity",
-    label: "Calculate exact next-card equity.",
+    label: "Calculate exact showdown equity.",
     suffix: "%",
     tolerance: 1,
     answer: (hand) => drawEquityFor(hand),
-    hint: "Use the rule of 2 to estimate next-card equity from your outs, then compare against the exact target."
+    hint: "Estimate from your outs with rule of 4 on the flop or rule of 2 on the turn, then compare against the exact target."
   },
   {
     key: "potOdds",
@@ -59,7 +59,7 @@ const steps = [
     suffix: "",
     tolerance: 0,
     answer: (hand) => shouldCallFor(hand) ? "call" : "fold",
-    hint: "Call when exact next-card equity is at least the calculated implied break-even price."
+    hint: "Call when exact showdown equity is at least the calculated implied break-even price."
   }
 ];
 
@@ -213,8 +213,50 @@ function discountedOutsFor(hand) {
   return roundToTenth(discountedOuts);
 }
 
+function showdownOutcomes(hand) {
+  const remainingDeck = remainingDeckFor(hand);
+  const cardsToCome = 5 - hand.boardCards.length;
+
+  if (cardsToCome === 1) {
+    return remainingDeck.map((riverCard) => {
+      const finalBoard = [...hand.boardCards, riverCard];
+      const result = compareHands(
+        evaluateHand([...hand.heroCards, ...finalBoard]),
+        evaluateHand([...hand.villainCards, ...finalBoard])
+      );
+
+      return { cards: [riverCard], result };
+    });
+  }
+
+  if (cardsToCome === 2) {
+    const outcomes = [];
+    for (let firstIndex = 0; firstIndex < remainingDeck.length - 1; firstIndex += 1) {
+      for (let secondIndex = firstIndex + 1; secondIndex < remainingDeck.length; secondIndex += 1) {
+        const turnCard = remainingDeck[firstIndex];
+        const riverCard = remainingDeck[secondIndex];
+        const finalBoard = [...hand.boardCards, turnCard, riverCard];
+        const result = compareHands(
+          evaluateHand([...hand.heroCards, ...finalBoard]),
+          evaluateHand([...hand.villainCards, ...finalBoard])
+        );
+
+        outcomes.push({ cards: [turnCard, riverCard], result });
+      }
+    }
+
+    return outcomes;
+  }
+
+  const result = compareHands(
+    evaluateHand([...hand.heroCards, ...hand.boardCards]),
+    evaluateHand([...hand.villainCards, ...hand.boardCards])
+  );
+  return [{ cards: [], result }];
+}
+
 function drawEquityFor(hand) {
-  const outcomes = nextCardOutcomes(hand);
+  const outcomes = showdownOutcomes(hand);
   const equity = outcomes.reduce((total, { result }) => {
     if (result > 0) return total + 1;
     if (result === 0) return total + 0.5;
@@ -347,7 +389,7 @@ function madeHandLabel(evaluation) {
 }
 
 function noteFor(hand) {
-  const outcomes = nextCardOutcomes(hand);
+  const outcomes = showdownOutcomes(hand);
   const wins = outcomes.filter(({ result }) => result > 0).length;
   const ties = outcomes.filter(({ result }) => result === 0).length;
   const losses = outcomes.length - wins - ties;
@@ -357,7 +399,7 @@ function noteFor(hand) {
   const price = impliedOddsFor(hand);
   const decision = shouldCallFor(hand) ? "call" : "fold";
 
-  return `Villain was dealt ${hand.villain}. ${cleanOuts} next cards improve Hero and win outright, worth ${discountedOuts} discounted outs. For equity, ${wins} next cards win, ${ties} tie, and ${losses} lose from ${outcomes.length} unseen cards, or ${equity}% exact next-card equity. The implied break-even price is ${price}%, so this is a ${decision}.`;
+  return `Villain was dealt ${hand.villain}. ${cleanOuts} next cards improve Hero and win outright, worth ${discountedOuts} discounted outs. For equity, ${wins} runouts win, ${ties} tie, and ${losses} lose from ${outcomes.length} possible runouts, or ${equity}% exact showdown equity. The implied break-even price is ${price}%, so this is a ${decision}.`;
 }
 
 function render() {
@@ -469,7 +511,7 @@ function renderWholeMode(hand) {
   elements.inputSlot.innerHTML = `
     <input id="outsInput" name="outs" type="number" min="0" step="1" inputmode="numeric" placeholder="Clean outs" aria-label="Clean outs" required />
     <input id="discountedOutsInput" name="discountedOuts" type="number" min="0" step="0.5" inputmode="decimal" placeholder="Discounted outs" aria-label="Discounted outs" required />
-    <input id="drawEquityInput" name="drawEquity" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Exact equity %" aria-label="Exact next-card equity percent" required />
+    <input id="drawEquityInput" name="drawEquity" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Exact equity %" aria-label="Exact showdown equity percent" required />
     <input id="potOddsInput" name="potOdds" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Pot price %" aria-label="Direct pot odds percent" required />
     <input id="impliedOddsInput" name="impliedOdds" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Implied price %" aria-label="Implied odds break-even percent" required />
     ${decisionChoices("wholeDecision")}
@@ -615,7 +657,7 @@ function explanationFor(step, hand, expected) {
     return `Clean improving wins count as 1 out, for ${expected} discounted outs.`;
   }
   if (step.key === "drawEquity") {
-    return `All next-card wins and ties from ${remainingDeckFor(hand).length} unseen cards = ${expected}%.`;
+    return `All showdown wins and ties across ${showdownOutcomes(hand).length} possible runouts = ${expected}%.`;
   }
   if (step.key === "potOdds") {
     return `${money(hand.call)} / (${money(hand.pot)} + ${money(hand.call)}) = ${expected}%.`;
@@ -624,7 +666,7 @@ function explanationFor(step, hand, expected) {
     return `${money(hand.call)} / (${money(hand.pot)} + ${money(hand.call)} + ${money(hand.futurePayoff)} future payoff) = ${expected}%.`;
   }
   if (step.key === "decision") {
-    return `${drawEquityFor(hand)}% exact next-card equity vs ${impliedOddsFor(hand)}% implied break-even price. ${hand.note}`;
+    return `${drawEquityFor(hand)}% exact showdown equity vs ${impliedOddsFor(hand)}% implied break-even price. ${hand.note}`;
   }
   return hand.note;
 }

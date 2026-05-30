@@ -46,7 +46,7 @@ vm.createContext(context);
 
 const source = fs.readFileSync("app.js", "utf8");
 vm.runInContext(`${source}
-this.__poker = { cleanOutsFor, discountedOutsFor, drawEquityFor, nextCardOutcomes };`, context);
+this.__poker = { cleanOutsFor, discountedOutsFor, drawEquityFor, nextCardOutcomes, showdownOutcomes };`, context);
 
 const bottomTwoPairAhead = {
   heroCards: ["3♥", "7♠"],
@@ -64,7 +64,8 @@ const cleanCards = Array.from(
 assert.deepEqual(cleanCards, ["3♠", "3♣", "7♦", "7♣"].sort());
 assert.equal(context.__poker.cleanOutsFor(bottomTwoPairAhead), 4);
 assert.equal(context.__poker.discountedOutsFor(bottomTwoPairAhead), 4);
-assert.equal(context.__poker.drawEquityFor(bottomTwoPairAhead), 88.9);
+assert.equal(context.__poker.showdownOutcomes(bottomTwoPairAhead).length, 990);
+assert.equal(context.__poker.drawEquityFor(bottomTwoPairAhead), 74.5);
 
 const turnChopOnlyDraw = {
   heroCards: ["A♥", "K♥"],
