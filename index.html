@@ -10,9 +10,9 @@
     <main class="app-shell">
       <section class="hero">
         <p class="eyebrow">Rapid-fire poker math</p>
-        <h1>Estimate the call in seconds.</h1>
+        <h1>Read the table. Make the call.</h1>
         <p>
-          Drill outs, discounted-out equity, direct pot odds, stack-aware implied odds, and call decisions with a simple two-mode trainer.
+          A poker-table drill for pot size, stack depth, current bets, price, implied odds, and fast call/fold decisions.
         </p>
       </section>
 
@@ -36,7 +36,7 @@
           <button id="newHand" class="secondary" type="button">New hand</button>
         </div>
 
-        <div id="scenarioFacts" class="facts-grid" aria-live="polite"></div>
+        <div id="scenarioFacts" class="poker-table-wrap" aria-live="polite"></div>
 
         <div id="stepProgress" class="step-progress" aria-label="Step progress"></div>
 
@@ -50,11 +50,11 @@
       </section>
 
       <section class="reference-card">
-        <h2>Keep it simple</h2>
+        <h2>Table-reading order</h2>
         <ul>
-          <li>Use discounted outs for equity: rule of 2 on the turn and rule of 4 on the flop.</li>
-          <li>Read the action first: starting pot, current bet, call size, final pot, and effective stacks.</li>
-          <li>Let opponent style influence only realistic future payoff, then call when discounted equity beats the implied break-even price.</li>
+          <li>Read pot, bet, call amount, and final pot before doing equity math.</li>
+          <li>Use stack badges to cap realistic implied payoff.</li>
+          <li>Call when discounted equity beats the displayed implied break-even price.</li>
         </ul>
       </section>
     </main>

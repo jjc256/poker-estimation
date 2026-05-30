@@ -1,15 +1,15 @@
 :root {
-  color-scheme: light;
+  color-scheme: dark;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f5f2eb;
-  color: #201b16;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(35, 120, 74, 0.38), transparent 32rem),
+    linear-gradient(135deg, #070b0c 0%, #101815 44%, #1e130d 100%);
+  color: #f7efe2;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -19,9 +19,7 @@ body {
 
 button,
 input,
-select {
-  font: inherit;
-}
+select { font: inherit; }
 
 button {
   border: 0;
@@ -29,24 +27,24 @@ button {
 }
 
 .app-shell {
-  width: min(960px, calc(100% - 32px));
+  width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 32px 0 48px;
+  padding: 28px 0 48px;
 }
 
 .hero,
 .mode-card,
 .practice-card,
 .reference-card {
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(32, 27, 22, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 28px;
-  box-shadow: 0 24px 70px rgba(75, 57, 39, 0.12);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.32);
 }
 
 .hero {
-  padding: 40px;
-  background: linear-gradient(135deg, #fff8ec, #f6e2bd);
+  padding: 30px 34px;
+  background: linear-gradient(135deg, rgba(255, 246, 229, 0.95), rgba(230, 177, 82, 0.94));
+  color: #1d130b;
 }
 
 .hero h1,
@@ -58,27 +56,29 @@ button {
 }
 
 .hero h1 {
-  max-width: 680px;
-  font-size: clamp(2.5rem, 8vw, 5.5rem);
-  line-height: 0.9;
+  max-width: 760px;
+  font-size: clamp(2.4rem, 7vw, 5rem);
+  line-height: 0.92;
 }
 
 .hero p:not(.eyebrow) {
-  max-width: 640px;
-  margin: 22px 0 0;
-  color: #6f5b44;
-  font-size: 1.12rem;
-  line-height: 1.6;
+  max-width: 720px;
+  margin: 18px 0 0;
+  color: #5b3719;
+  font-size: 1.08rem;
+  line-height: 1.55;
 }
 
 .eyebrow {
   margin: 0 0 10px;
-  color: #a15417;
-  font-size: 0.78rem;
-  font-weight: 800;
+  color: #ffb44d;
+  font-size: 0.76rem;
+  font-weight: 900;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
+
+.hero .eyebrow { color: #89460d; }
 
 .mode-card,
 .scenario-header {
@@ -92,7 +92,9 @@ button {
 .practice-card,
 .reference-card {
   margin-top: 18px;
-  padding: 24px;
+  padding: 22px;
+  background: rgba(13, 18, 18, 0.86);
+  backdrop-filter: blur(10px);
 }
 
 .mode-toggle {
@@ -101,7 +103,7 @@ button {
   gap: 8px;
   padding: 6px;
   border-radius: 999px;
-  background: #efe5d6;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .mode-toggle button,
@@ -110,27 +112,28 @@ button {
 .choice-button {
   min-height: 46px;
   border-radius: 999px;
-  font-weight: 800;
-  transition: transform 160ms ease, background 160ms ease, color 160ms ease;
+  font-weight: 900;
+  transition: transform 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
 .mode-toggle button {
   padding: 0 18px;
-  color: #765f47;
+  color: #c8bbab;
   background: transparent;
 }
 
 .mode-toggle button.active,
 .primary,
 .choice-button.selected {
-  color: white;
-  background: #201b16;
+  color: #201309;
+  background: linear-gradient(135deg, #ffd37d, #ff9c2f);
+  box-shadow: 0 10px 30px rgba(255, 156, 47, 0.24);
 }
 
 .secondary {
   padding: 0 18px;
-  color: #201b16;
-  background: #f0e4d3;
+  color: #f7efe2;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .primary {
@@ -139,9 +142,7 @@ button {
   font-size: 1.05rem;
 }
 
-button:active {
-  transform: translateY(1px) scale(0.99);
-}
+button:active { transform: translateY(1px) scale(0.99); }
 
 button:disabled,
 input:disabled {
@@ -149,33 +150,193 @@ input:disabled {
   opacity: 0.72;
 }
 
-.facts-grid {
+.poker-table-wrap { margin-top: 20px; }
+
+.poker-table {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
-  margin-top: 22px;
+  grid-template-columns: 260px minmax(300px, 1fr) 260px;
+  grid-template-areas:
+    "villain board hero"
+    "metrics metrics metrics";
+  gap: 16px;
+  min-height: 430px;
+  padding: 28px;
+  overflow: hidden;
+  border: 14px solid #382112;
+  border-radius: 220px;
+  background:
+    radial-gradient(ellipse at center, rgba(73, 185, 116, 0.16), transparent 48%),
+    linear-gradient(135deg, #0f6a43, #083a2d 72%);
+  box-shadow: inset 0 0 0 5px rgba(255, 255, 255, 0.07), inset 0 20px 90px rgba(0, 0, 0, 0.42);
 }
 
-.fact {
+.seat,
+.board-zone,
+.pot-metrics,
+.metric-card {
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(7, 12, 12, 0.68);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
+}
+
+.seat {
+  align-self: center;
   padding: 16px;
-  border: 1px solid rgba(32, 27, 22, 0.09);
-  border-radius: 20px;
-  background: #fbf7ef;
+  border-radius: 24px;
 }
 
-.fact span {
+.seat-villain { grid-area: villain; }
+.seat-hero { grid-area: hero; }
+
+.seat-header,
+.metric-row,
+.bet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.player-name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 950;
+}
+
+.player-style {
   display: block;
-  color: #8f7a61;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  margin-top: 5px;
+  color: #b7d9c1;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.stack-badge,
+.street-badge,
+.call-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.stack-badge { background: rgba(255, 255, 255, 0.12); }
+.street-badge { color: #102016; background: #a5f0b6; }
+.call-badge { color: #241204; background: #ffd37d; }
+
+.hole-cards,
+.board-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 66px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 9px;
+  background: linear-gradient(145deg, #fff, #e8dfd2);
+  color: #19120c;
+  font-size: 1.22rem;
+  font-weight: 950;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
+}
+
+.card.red { color: #ba2323; }
+.card.back { color: transparent; background: repeating-linear-gradient(45deg, #253a89 0 8px, #1b2b67 8px 16px); }
+
+.bet-row {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: #dfd2bf;
+}
+
+.chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff7ea;
+  font-weight: 950;
+}
+
+.chip-dot {
+  width: 22px;
+  height: 22px;
+  border: 4px dashed rgba(255, 255, 255, 0.82);
+  border-radius: 50%;
+  background: #d33b32;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.34);
+}
+
+.board-zone {
+  grid-area: board;
+  align-self: center;
+  justify-self: stretch;
+  padding: 20px;
+  border-radius: 30px;
+  text-align: center;
+}
+
+.board-topline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.pot-number {
+  margin: 8px 0 0;
+  font-size: clamp(2.2rem, 6vw, 4.6rem);
+  font-weight: 1000;
+  letter-spacing: -0.06em;
+  line-height: 0.95;
+}
+
+.pot-label,
+.metric-label {
+  color: #a8c9b2;
+  font-size: 0.76rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.fact strong {
+.board-cards { justify-content: center; }
+
+.pot-metrics {
+  grid-area: metrics;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  align-self: end;
+  padding: 12px;
+  border-radius: 28px;
+}
+
+.metric-card {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.metric-card strong {
   display: block;
-  margin-top: 6px;
-  font-size: 1.05rem;
+  margin-top: 4px;
+  font-size: 1.34rem;
+  letter-spacing: -0.04em;
 }
 
 .step-progress {
@@ -188,34 +349,28 @@ input:disabled {
 .step-pill {
   padding: 8px 12px;
   border-radius: 999px;
-  color: #89745d;
-  background: #f0e4d3;
+  color: #bcae9b;
+  background: rgba(255, 255, 255, 0.09);
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 900;
 }
 
-.step-pill.current {
-  color: #fff;
-  background: #a15417;
-}
-
-.step-pill.done {
-  color: #285c38;
-  background: #dff0df;
-}
+.step-pill.current { color: #201309; background: #ffb44d; }
+.step-pill.done { color: #092012; background: #8de7a6; }
 
 .answer-panel {
   margin-top: 22px;
   padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 24px;
-  background: #fffaf3;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .answer-panel label {
   display: block;
   margin-bottom: 10px;
   font-size: 1.25rem;
-  font-weight: 900;
+  font-weight: 950;
   letter-spacing: -0.02em;
 }
 
@@ -229,18 +384,18 @@ input[type="number"] {
   width: 100%;
   min-height: 62px;
   padding: 0 18px;
-  border: 2px solid #e3d5c1;
+  border: 2px solid rgba(255, 255, 255, 0.14);
   border-radius: 18px;
-  background: white;
-  color: #201b16;
+  background: rgba(255, 255, 255, 0.95);
+  color: #15100b;
   font-size: 1.5rem;
-  font-weight: 900;
+  font-weight: 950;
   outline: none;
 }
 
 input[type="number"]:focus {
-  border-color: #a15417;
-  box-shadow: 0 0 0 4px rgba(161, 84, 23, 0.14);
+  border-color: #ffb44d;
+  box-shadow: 0 0 0 4px rgba(255, 180, 77, 0.18);
 }
 
 .choice-grid {
@@ -251,8 +406,8 @@ input[type="number"]:focus {
 
 .choice-button {
   padding: 0 18px;
-  color: #201b16;
-  background: #f0e4d3;
+  color: #f7efe2;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .feedback {
@@ -260,30 +415,33 @@ input[type="number"]:focus {
   margin-top: 16px;
   padding: 18px;
   border-radius: 22px;
-  background: #f6efe4;
-  color: #5c4b38;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d8cbb9;
   line-height: 1.5;
 }
 
-.feedback.good {
-  background: #e7f4e7;
-  color: #285c38;
-}
-
-.feedback.bad {
-  background: #fae5df;
-  color: #7d2b1d;
-}
-
-.feedback strong {
-  color: inherit;
-}
+.feedback.good { background: rgba(92, 201, 121, 0.18); color: #bdf1ca; }
+.feedback.bad { background: rgba(255, 102, 73, 0.18); color: #ffc3b7; }
+.feedback strong { color: inherit; }
 
 .reference-card ul {
   margin: 12px 0 0;
   padding-left: 20px;
-  color: #6f5b44;
+  color: #d0c3b1;
   line-height: 1.7;
+}
+
+@media (max-width: 980px) {
+  .poker-table {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "board board"
+      "villain hero"
+      "metrics metrics";
+    border-radius: 58px;
+  }
+
+  .pot-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
@@ -301,13 +459,19 @@ input[type="number"]:focus {
   }
 
   .mode-card,
-  .scenario-header {
-    align-items: stretch;
-    flex-direction: column;
+  .scenario-header { align-items: stretch; flex-direction: column; }
+
+  .poker-table {
+    grid-template-columns: 1fr;
+    grid-template-areas: "board" "villain" "hero" "metrics";
+    gap: 12px;
+    padding: 14px;
+    border-width: 8px;
+    border-radius: 36px;
   }
 
-  .facts-grid,
-  .choice-grid {
-    grid-template-columns: 1fr;
-  }
+  .pot-metrics,
+  .choice-grid { grid-template-columns: 1fr; }
+
+  .card { width: 42px; height: 58px; font-size: 1.05rem; }
 }
