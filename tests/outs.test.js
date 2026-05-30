@@ -46,7 +46,48 @@ vm.createContext(context);
 
 const source = fs.readFileSync("app.js", "utf8");
 vm.runInContext(`${source}
-this.__poker = { cleanOutCardsFor, cleanOutsFor, discountedOutsFor, drawEquityFor, nextCardOutcomes, showdownOutcomes };`, context);
+this.__poker = { cleanOutCardsFor, cleanOutsFor, createDeck, discountedOutsFor, drawEquityFor, nextCardOutcomes, outCleanlinessFor, showdownOutcomes };`, context);
+
+function createSeededRandom(seed) {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
+
+function drawSeededCards(deck, count, random) {
+  return Array.from({ length: count }, () => deck.splice(Math.floor(random() * deck.length), 1)[0]);
+}
+
+function createSeededHand(seed, boardCardCount) {
+  const random = createSeededRandom(seed);
+  const deck = Array.from(context.__poker.createDeck());
+  return {
+    heroCards: drawSeededCards(deck, 2, random),
+    villainCards: drawSeededCards(deck, 2, random),
+    boardCards: drawSeededCards(deck, boardCardCount, random)
+  };
+}
+
+function assertDiscountInvariant(hand) {
+  const cleanOutCards = Array.from(context.__poker.cleanOutCardsFor(hand));
+  const cleanOuts = context.__poker.cleanOutsFor(hand);
+  const discountedOuts = context.__poker.discountedOutsFor(hand);
+
+  assert.equal(cleanOutCards.length, cleanOuts);
+  assert.ok(discountedOuts >= 0, `Discounted outs went negative for ${JSON.stringify(hand)}`);
+  assert.ok(
+    discountedOuts <= cleanOuts,
+    `Discounted outs ${discountedOuts} exceeded clean outs ${cleanOuts} for ${JSON.stringify(hand)}`
+  );
+
+  for (const outCard of cleanOutCards) {
+    const cleanliness = context.__poker.outCleanlinessFor(hand, outCard);
+    assert.ok(cleanliness >= 0, `Out cleanliness went negative for ${outCard} in ${JSON.stringify(hand)}`);
+    assert.ok(cleanliness <= 1, `Out cleanliness exceeded 1 for ${outCard} in ${JSON.stringify(hand)}`);
+  }
+}
 
 const bottomTwoPairAhead = {
   heroCards: ["3♥", "7♠"],
@@ -78,6 +119,16 @@ assert.equal(context.__poker.cleanOutsFor(aceHighAlreadyAhead), 0);
 assert.deepEqual(Array.from(context.__poker.cleanOutCardsFor(aceHighAlreadyAhead)), []);
 assert.equal(context.__poker.discountedOutsFor(aceHighAlreadyAhead), 0);
 
+const dirtyAceOuts = {
+  heroCards: ["A♠", "3♣"],
+  villainCards: ["K♦", "J♦"],
+  boardCards: ["9♦", "7♥", "4♠", "J♣"]
+};
+
+assert.deepEqual(Array.from(context.__poker.cleanOutCardsFor(dirtyAceOuts)).sort(), ["A♥", "A♦", "A♣"].sort());
+assert.equal(context.__poker.cleanOutsFor(dirtyAceOuts), 3);
+assert.ok(context.__poker.discountedOutsFor(dirtyAceOuts) < context.__poker.cleanOutsFor(dirtyAceOuts));
+
 const turnChopOnlyDraw = {
   heroCards: ["A♥", "K♥"],
   villainCards: ["A♣", "K♣"],
@@ -97,3 +148,8 @@ assert.ok(improvingChops.includes("T♦"));
 assert.ok(improvingChops.includes("T♣"));
 assert.equal(context.__poker.cleanOutsFor(turnChopOnlyDraw), 0);
 assert.equal(context.__poker.discountedOutsFor(turnChopOnlyDraw), 0);
+
+for (let seed = 1; seed <= 750; seed += 1) {
+  assertDiscountInvariant(createSeededHand(seed, 3));
+  assertDiscountInvariant(createSeededHand(seed + 10000, 4));
+}

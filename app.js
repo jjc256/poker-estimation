@@ -27,7 +27,7 @@ const steps = [
     suffix: "outs",
     tolerance: 0.75,
     answer: (hand) => discountedOutsFor(hand),
-    hint: "Count clean cards that turn Hero from not winning into an outright winner. The target is calculated from the actual remaining deck."
+    hint: "Discount dirty outs for the chance Villain can still beat the made hand when that card arrives."
   },
   {
     key: "drawEquity",
@@ -179,6 +179,11 @@ function remainingDeckFor(hand) {
   return createDeck().filter((card) => !usedCards.has(card));
 }
 
+function visibleRemainingDeckFor(hand) {
+  const visibleCards = new Set([...hand.heroCards, ...hand.boardCards]);
+  return createDeck().filter((card) => !visibleCards.has(card));
+}
+
 function nextCardOutcomes(hand) {
   const currentHeroHand = evaluateHand([...hand.heroCards, ...hand.boardCards]);
   const currentResult = compareHands(
@@ -214,14 +219,30 @@ function cleanOutCardsFor(hand) {
 }
 
 function discountedOutsFor(hand) {
-  const outcomes = nextCardOutcomes(hand);
-  const discountedOuts = outcomes.reduce((total, { currentResult, result }) => {
-    if (currentResult > 0) return total;
-    if (result > 0) return total + 1;
-    return total;
+  const discountedOuts = cleanOutCardsFor(hand).reduce((total, outCard) => {
+    return total + outCleanlinessFor(hand, outCard);
   }, 0);
 
   return roundToTenth(discountedOuts);
+}
+
+function outCleanlinessFor(hand, outCard) {
+  const possibleVillainCards = visibleRemainingDeckFor(hand).filter((card) => card !== outCard);
+  const finalBoard = [...hand.boardCards, outCard];
+  const heroHand = evaluateHand([...hand.heroCards, ...finalBoard]);
+  let wins = 0;
+  let combos = 0;
+
+  for (let firstIndex = 0; firstIndex < possibleVillainCards.length - 1; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < possibleVillainCards.length; secondIndex += 1) {
+      const villainCards = [possibleVillainCards[firstIndex], possibleVillainCards[secondIndex]];
+      const villainHand = evaluateHand([...villainCards, ...finalBoard]);
+      combos += 1;
+      if (compareHands(heroHand, villainHand) > 0) wins += 1;
+    }
+  }
+
+  return combos ? wins / combos : 0;
 }
 
 function showdownOutcomes(hand) {
@@ -667,7 +688,7 @@ function explanationFor(step, hand, expected) {
     return `${expected} unseen cards turn Hero from not winning into an outright winner on the next street.`;
   }
   if (step.key === "discountedOuts") {
-    return `Clean cards that turn Hero into an outright winner count as 1 out, for ${expected} discounted outs.`;
+    return `Each listed out is weighted by how often it stays good against possible hidden Villain holdings, for ${expected} discounted outs.`;
   }
   if (step.key === "drawEquity") {
     return `All showdown wins and ties across ${showdownOutcomes(hand).length} possible runouts = ${expected}%.`;
