@@ -251,9 +251,7 @@ function render() {
   elements.stepMode.classList.toggle("active", state.mode === "step");
   elements.wholeMode.classList.toggle("active", state.mode === "whole");
   elements.scenarioTitle.textContent = hand.title;
-  elements.scenarioFacts.innerHTML = factsFor(hand)
-    .map(({ label, value }) => `<div class="fact"><span>${label}</span><strong>${value}</strong></div>`)
-    .join("");
+  elements.scenarioFacts.innerHTML = tableFor(hand);
 
   if (state.mode === "step") {
     renderStepMode(hand);
@@ -262,21 +260,96 @@ function render() {
   }
 }
 
-function factsFor(hand) {
-  return [
-    { label: "Hero", value: hand.hero },
-    { label: "Board", value: hand.board },
-    { label: "Street", value: hand.street },
-    { label: "Action", value: hand.action },
-    { label: "Pot start", value: `$${hand.potStart}` },
-    { label: "Street bets", value: `Hero $${hand.heroBetThisStreet} / Villain $${hand.opponentBetThisStreet}` },
-    { label: "Price", value: `$${hand.call} to win $${hand.pot}` },
-    { label: "Final pot", value: `$${hand.pot + hand.call}` },
-    { label: "Stacks", value: `Hero $${hand.heroStack} / Villain $${hand.opponentStack}` },
-    { label: "Effective behind", value: `$${effectiveStackBehindAfterCall(hand)} after call` },
-    { label: "Future payoff", value: `$${futurePayoffFor(hand)} style-adjusted` },
-    { label: "Opponent", value: hand.opponent }
-  ];
+function money(amount) {
+  return `$${amount}`;
+}
+
+function cardMarkup(card) {
+  const isRed = card.includes("♥") || card.includes("♦");
+  return `<span class="card ${isRed ? "red" : "black"}" aria-label="${card}">${card}</span>`;
+}
+
+function cardsMarkup(cards) {
+  return cards.split(" ").map(cardMarkup).join("");
+}
+
+function boardLabelFor(hand) {
+  return hand.street === "Flop" ? "Flop" : "Board through turn";
+}
+
+function tableFor(hand) {
+  const finalPot = hand.pot + hand.call;
+  const effectiveBehind = effectiveStackBehindAfterCall(hand);
+  const villainStyle = hand.opponent.replace(/^.*?Villain:\s*/, "");
+
+  return `
+    <section class="poker-table" aria-label="Poker table situation">
+      <article class="seat seat-villain" aria-label="Villain seat">
+        <div class="seat-header">
+          <div>
+            <p class="player-name">Villain</p>
+            <span class="player-style">${villainStyle}</span>
+          </div>
+          <span class="stack-badge">Stack ${money(hand.opponentStack)}</span>
+        </div>
+        <div class="hole-cards" aria-hidden="true">
+          <span class="card back">?</span><span class="card back">?</span>
+        </div>
+        <div class="bet-row">
+          <span>Current bet</span>
+          <span class="chips"><span class="chip-dot"></span>${money(hand.opponentBetThisStreet)}</span>
+        </div>
+      </article>
+
+      <article class="board-zone" aria-label="Board and pot">
+        <div class="board-topline">
+          <span class="street-badge">${hand.street}</span>
+          <span class="call-badge">Hero calls ${money(hand.call)}</span>
+        </div>
+        <span class="pot-label">Pot now</span>
+        <p class="pot-number">${money(hand.pot)}</p>
+        <div class="board-cards" aria-label="${boardLabelFor(hand)}">${cardsMarkup(hand.board)}</div>
+      </article>
+
+      <article class="seat seat-hero" aria-label="Hero seat">
+        <div class="seat-header">
+          <div>
+            <p class="player-name">Hero</p>
+            <span class="player-style">Effective behind after call: ${money(effectiveBehind)}</span>
+          </div>
+          <span class="stack-badge">Stack ${money(hand.heroStack)}</span>
+        </div>
+        <div class="hole-cards" aria-label="Hero hole cards">${cardsMarkup(hand.hero)}</div>
+        <div class="bet-row">
+          <span>In this street</span>
+          <span class="chips"><span class="chip-dot"></span>${money(hand.heroBetThisStreet)}</span>
+        </div>
+      </article>
+
+      <div class="pot-metrics" aria-label="Pot and stack metrics">
+        <div class="metric-card">
+          <span class="metric-label">Start pot</span>
+          <strong>${money(hand.potStart)}</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Call amount</span>
+          <strong>${money(hand.call)}</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Final pot</span>
+          <strong>${money(finalPot)}</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Direct price</span>
+          <strong>${potOddsFor(hand)}%</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Implied payoff</span>
+          <strong>${money(futurePayoffFor(hand))}</strong>
+        </div>
+      </div>
+    </section>
+  `;
 }
 
 function renderStepMode(hand) {
@@ -418,7 +491,7 @@ function checkWholeAnswers(formData) {
     })
     .join("");
 
-  const header = allCorrect ? "Perfect hand." : `${correctCount}/5 close enough.`;
+  const header = allCorrect ? "Perfect hand." : `${correctCount}/${results.length} close enough.`;
   showFeedback(allCorrect, `<strong>${header}</strong><ul>${lines}</ul><p>${hand.note}</p>`);
 }
 
