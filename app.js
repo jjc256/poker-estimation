@@ -31,11 +31,11 @@ const steps = [
   },
   {
     key: "drawEquity",
-    label: "Calculate exact showdown equity.",
+    label: "Calculate next-card draw equity.",
     suffix: "%",
     tolerance: 5,
     answer: (hand) => drawEquityFor(hand),
-    hint: "Estimate from your outs with rule of 4 on the flop or rule of 2 on the turn, then compare against the exact target."
+    hint: "Use the rule of 2 to estimate the chance the next card makes your hand."
   },
   {
     key: "potOdds",
@@ -59,7 +59,7 @@ const steps = [
     suffix: "",
     tolerance: 0,
     answer: (hand) => shouldCallFor(hand) ? "call" : "fold",
-    hint: "Call when exact showdown equity is at least the calculated implied break-even price."
+    hint: "Call when next-card draw equity is at least the calculated implied break-even price."
   }
 ];
 
@@ -294,14 +294,7 @@ function showdownOutcomes(hand) {
 }
 
 function drawEquityFor(hand) {
-  const outcomes = showdownOutcomes(hand);
-  const equity = outcomes.reduce((total, { result }) => {
-    if (result > 0) return total + 1;
-    if (result === 0) return total + 0.5;
-    return total;
-  }, 0);
-
-  return roundToTenth((equity / outcomes.length) * 100);
+  return roundToTenth((discountedOutsFor(hand) / visibleRemainingDeckFor(hand).length) * 100);
 }
 
 function potOddsFor(hand) {
@@ -427,17 +420,14 @@ function madeHandLabel(evaluation) {
 }
 
 function noteFor(hand) {
-  const outcomes = showdownOutcomes(hand);
-  const wins = outcomes.filter(({ result }) => result > 0).length;
-  const ties = outcomes.filter(({ result }) => result === 0).length;
-  const losses = outcomes.length - wins - ties;
   const cleanOuts = cleanOutsFor(hand);
   const discountedOuts = discountedOutsFor(hand);
   const equity = drawEquityFor(hand);
+  const visibleUnseenCards = visibleRemainingDeckFor(hand).length;
   const price = impliedOddsFor(hand);
   const decision = shouldCallFor(hand) ? "call" : "fold";
 
-  return `Villain was dealt ${hand.villain}. ${cleanOuts} next cards turn Hero from not winning into an outright winner, worth ${discountedOuts} discounted outs. For equity, ${wins} runouts win, ${ties} tie, and ${losses} lose from ${outcomes.length} possible runouts, or ${equity}% exact showdown equity. The implied break-even price is ${price}%, so this is a ${decision}.`;
+  return `Villain was dealt ${hand.villain}. ${cleanOuts} next cards turn Hero from not winning into an outright winner, worth ${discountedOuts} discounted outs. Next-card draw equity is ${discountedOuts} discounted outs / ${visibleUnseenCards} unseen cards, or ${equity}%. The implied break-even price is ${price}%, so this is a ${decision}.`;
 }
 
 function render() {
@@ -549,7 +539,7 @@ function renderWholeMode(hand) {
   elements.inputSlot.innerHTML = `
     <input id="outsInput" name="outs" type="number" min="0" step="1" inputmode="numeric" placeholder="Clean outs" aria-label="Clean outs" required />
     <input id="discountedOutsInput" name="discountedOuts" type="number" min="0" step="0.5" inputmode="decimal" placeholder="Discounted outs" aria-label="Discounted outs" required />
-    <input id="drawEquityInput" name="drawEquity" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Exact equity %" aria-label="Exact showdown equity percent" required />
+    <input id="drawEquityInput" name="drawEquity" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Draw equity %" aria-label="Next-card draw equity percent" required />
     <input id="potOddsInput" name="potOdds" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Pot price %" aria-label="Direct pot odds percent" required />
     <input id="impliedOddsInput" name="impliedOdds" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Implied price %" aria-label="Implied odds break-even percent" required />
     ${decisionChoices("wholeDecision")}
@@ -697,7 +687,7 @@ function explanationFor(step, hand, expected) {
     return `Each listed out is weighted by how often it stays good against possible hidden Villain holdings, for ${expected} discounted outs.`;
   }
   if (step.key === "drawEquity") {
-    return `All showdown wins and ties across ${showdownOutcomes(hand).length} possible runouts = ${expected}%.`;
+    return `${discountedOutsFor(hand)} discounted outs / ${visibleRemainingDeckFor(hand).length} unseen cards = ${expected}%.`;
   }
   if (step.key === "potOdds") {
     return `${money(hand.call)} / (${money(hand.pot)} + ${money(hand.call)}) = ${expected}%.`;
@@ -706,7 +696,7 @@ function explanationFor(step, hand, expected) {
     return `${money(hand.call)} / (${money(hand.pot)} + ${money(hand.call)} + ${money(hand.futurePayoff)} future payoff) = ${expected}%.`;
   }
   if (step.key === "decision") {
-    return `${drawEquityFor(hand)}% exact showdown equity vs ${impliedOddsFor(hand)}% implied break-even price. ${hand.note}`;
+    return `${drawEquityFor(hand)}% next-card draw equity vs ${impliedOddsFor(hand)}% implied break-even price. ${hand.note}`;
   }
   return hand.note;
 }

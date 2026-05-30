@@ -107,7 +107,7 @@ assert.deepEqual(Array.from(context.__poker.cleanOutCardsFor(bottomTwoPairAhead)
 assert.equal(context.__poker.cleanOutsFor(bottomTwoPairAhead), 0);
 assert.equal(context.__poker.discountedOutsFor(bottomTwoPairAhead), 0);
 assert.equal(context.__poker.showdownOutcomes(bottomTwoPairAhead).length, 990);
-assert.equal(context.__poker.drawEquityFor(bottomTwoPairAhead), 74.5);
+assert.equal(context.__poker.drawEquityFor(bottomTwoPairAhead), 0);
 
 const aceHighAlreadyAhead = {
   heroCards: ["A♥", "J♦"],
@@ -137,6 +137,7 @@ const dirtyAceOuts = {
 assert.deepEqual(Array.from(context.__poker.cleanOutCardsFor(dirtyAceOuts)).sort(), ["A♥", "A♦", "A♣"].sort());
 assert.equal(context.__poker.cleanOutsFor(dirtyAceOuts), 3);
 assert.ok(context.__poker.discountedOutsFor(dirtyAceOuts) < context.__poker.cleanOutsFor(dirtyAceOuts));
+assert.equal(context.__poker.drawEquityFor(dirtyAceOuts), 5.4);
 
 const turnChopOnlyDraw = {
   heroCards: ["A♥", "K♥"],
