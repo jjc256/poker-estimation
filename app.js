@@ -33,7 +33,7 @@ const steps = [
     key: "drawEquity",
     label: "Calculate exact showdown equity.",
     suffix: "%",
-    tolerance: 1,
+    tolerance: 5,
     answer: (hand) => drawEquityFor(hand),
     hint: "Estimate from your outs with rule of 4 on the flop or rule of 2 on the turn, then compare against the exact target."
   },
@@ -41,7 +41,7 @@ const steps = [
     key: "potOdds",
     label: "Calculate the direct pot-odds price.",
     suffix: "%",
-    tolerance: 1,
+    tolerance: 5,
     answer: (hand) => potOddsFor(hand),
     hint: "Call amount divided by the final pot after Hero calls."
   },
@@ -49,7 +49,7 @@ const steps = [
     key: "impliedOdds",
     label: "Calculate the implied-odds break-even price.",
     suffix: "%",
-    tolerance: 1.5,
+    tolerance: 5,
     answer: (hand) => impliedOddsFor(hand),
     hint: "Add the generated future payoff estimate to the final pot, then divide the call by that larger pot."
   },
