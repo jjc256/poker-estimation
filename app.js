@@ -139,7 +139,8 @@ const state = {
   handIndex: 0,
   stepIndex: 0,
   wholeAnswers: {},
-  selectedDecision: ""
+  selectedDecision: "",
+  stepAwaitingNext: false
 };
 
 const elements = {
@@ -152,7 +153,8 @@ const elements = {
   answerForm: document.querySelector("#answerForm"),
   answerLabel: document.querySelector("#answerLabel"),
   inputSlot: document.querySelector("#inputSlot"),
-  feedback: document.querySelector("#feedback")
+  feedback: document.querySelector("#feedback"),
+  submitButton: document.querySelector("#answerForm button[type='submit']")
 };
 
 function currentHand() {
@@ -201,6 +203,9 @@ function renderStepMode(hand) {
     .join("");
   elements.answerLabel.textContent = step.label;
   elements.inputSlot.innerHTML = inputFor(step.key, step.label);
+  state.stepAwaitingNext = false;
+  elements.submitButton.textContent = "Check";
+  setAnswerControlsDisabled(false);
   elements.feedback.className = "feedback";
   elements.feedback.innerHTML = `<strong>Tip:</strong> ${step.hint}`;
   focusFirstInput();
@@ -217,6 +222,9 @@ function renderWholeMode(hand) {
     ${decisionChoices("wholeDecision")}
   `;
   state.selectedDecision = "";
+  state.stepAwaitingNext = false;
+  elements.submitButton.textContent = "Check";
+  setAnswerControlsDisabled(false);
   elements.feedback.className = "feedback";
   elements.feedback.innerHTML = `<strong>Rapid-fire:</strong> Fill all five answers, then check the hand once.`;
   focusFirstInput();
@@ -258,6 +266,13 @@ function focusFirstInput() {
 }
 
 function checkStepAnswer(formData) {
+  if (state.stepAwaitingNext) {
+    state.stepIndex += 1;
+    state.selectedDecision = "";
+    render();
+    return;
+  }
+
   const hand = currentHand();
   const step = steps[state.stepIndex];
   const expected = step.answer(hand);
@@ -273,13 +288,13 @@ function checkStepAnswer(formData) {
   showFeedback(result.correct, `${result.message} ${explanation}`);
 
   if (result.correct) {
+    setAnswerControlsDisabled(true);
     if (state.stepIndex === steps.length - 1) {
-      window.setTimeout(() => {
-        showFeedback(true, `<strong>Hand complete.</strong> ${hand.note} Tap New hand or keep looping.`);
-      }, 350);
+      elements.submitButton.textContent = "Hand complete";
+      showFeedback(true, `${result.message} ${explanation} <strong>Hand complete.</strong> Tap New hand or switch modes to continue.`);
     } else {
-      state.stepIndex += 1;
-      window.setTimeout(render, 700);
+      state.stepAwaitingNext = true;
+      elements.submitButton.textContent = "Next step";
     }
   }
 }
@@ -355,10 +370,17 @@ function showFeedback(isGood, html) {
   elements.feedback.innerHTML = html;
 }
 
+function setAnswerControlsDisabled(isDisabled) {
+  elements.inputSlot.querySelectorAll("input, button").forEach((control) => {
+    control.disabled = isDisabled;
+  });
+}
+
 function resetHand(index = state.handIndex) {
   state.handIndex = index;
   state.stepIndex = 0;
   state.selectedDecision = "";
+  state.stepAwaitingNext = false;
   render();
 }
 

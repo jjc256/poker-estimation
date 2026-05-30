@@ -143,6 +143,12 @@ button:active {
   transform: translateY(1px) scale(0.99);
 }
 
+button:disabled,
+input:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
 .facts-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
