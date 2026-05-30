@@ -204,7 +204,13 @@ function nextCardOutcomes(hand) {
 }
 
 function cleanOutsFor(hand) {
-  return nextCardOutcomes(hand).filter(({ currentResult, result }) => currentResult <= 0 && result > 0).length;
+  return cleanOutCardsFor(hand).length;
+}
+
+function cleanOutCardsFor(hand) {
+  return nextCardOutcomes(hand)
+    .filter(({ currentResult, result }) => currentResult <= 0 && result > 0)
+    .map(({ card }) => card);
 }
 
 function discountedOutsFor(hand) {
@@ -586,7 +592,8 @@ function checkStepAnswer(formData) {
 
   const result = evaluateAnswer(step, expected, received);
   const explanation = explanationFor(step, hand, expected);
-  showFeedback(result.correct, `${result.message} ${explanation}`);
+  const missedDetail = result.correct ? "" : missedAnswerDetailFor(step, hand);
+  showFeedback(result.correct, `${result.message} ${explanation}${missedDetail}`);
 
   if (result.correct) {
     setAnswerControlsDisabled(true);
@@ -626,7 +633,8 @@ function checkWholeAnswers(formData) {
     .map(({ step, expected, received, correct }) => {
       const displayExpected = step.key === "decision" ? expected : `${expected}${step.suffix}`;
       const displayReceived = step.key === "decision" ? received : `${received}${step.suffix}`;
-      return `<li>${correct ? "✅" : "❌"} ${labelForPill(step.key)}: you said ${displayReceived}; target ${displayExpected}</li>`;
+      const detail = correct ? "" : missedAnswerDetailFor(step, hand);
+      return `<li>${correct ? "✅" : "❌"} ${labelForPill(step.key)}: you said ${displayReceived}; target ${displayExpected}${detail}</li>`;
     })
     .join("");
 
@@ -674,6 +682,14 @@ function explanationFor(step, hand, expected) {
     return `${drawEquityFor(hand)}% exact showdown equity vs ${impliedOddsFor(hand)}% implied break-even price. ${hand.note}`;
   }
   return hand.note;
+}
+
+function missedAnswerDetailFor(step, hand) {
+  if (step.key !== "outs" && step.key !== "discountedOuts") return "";
+
+  const outCards = cleanOutCardsFor(hand);
+  const list = outCards.length ? outCards.join(" ") : "none";
+  return ` <span class="out-card-list">Outs: ${list}.</span>`;
 }
 
 function showFeedback(isGood, html) {
