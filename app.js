@@ -202,6 +202,7 @@ function nextCardOutcomes(hand) {
     return {
       card: nextCard,
       currentResult,
+      completesDraw: completesDraw(currentHeroHand, nextHeroHand),
       improvesHero: compareHands(nextHeroHand, currentHeroHand) > 0,
       result
     };
@@ -214,8 +215,13 @@ function cleanOutsFor(hand) {
 
 function cleanOutCardsFor(hand) {
   return nextCardOutcomes(hand)
-    .filter(({ currentResult, result }) => currentResult <= 0 && result > 0)
+    .filter(({ completesDraw, currentResult, result }) => result > 0 && (currentResult <= 0 || completesDraw))
     .map(({ card }) => card);
+}
+
+function completesDraw(currentHeroHand, nextHeroHand) {
+  if (compareHands(nextHeroHand, currentHeroHand) <= 0) return false;
+  return nextHeroHand.label === "straight" || nextHeroHand.label === "flush" || nextHeroHand.label === "straight flush";
 }
 
 function discountedOutsFor(hand) {

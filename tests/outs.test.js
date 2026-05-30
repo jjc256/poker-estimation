@@ -119,6 +119,15 @@ assert.equal(context.__poker.cleanOutsFor(aceHighAlreadyAhead), 0);
 assert.deepEqual(Array.from(context.__poker.cleanOutCardsFor(aceHighAlreadyAhead)), []);
 assert.equal(context.__poker.discountedOutsFor(aceHighAlreadyAhead), 0);
 
+const straightDrawAlreadyAhead = {
+  heroCards: ["5♣", "8♦"],
+  villainCards: ["2♥", "3♠"],
+  boardCards: ["7♥", "A♦", "9♣", "A♣"]
+};
+
+assert.deepEqual(Array.from(context.__poker.cleanOutCardsFor(straightDrawAlreadyAhead)).sort(), ["6♠", "6♥", "6♦", "6♣"].sort());
+assert.equal(context.__poker.cleanOutsFor(straightDrawAlreadyAhead), 4);
+
 const dirtyAceOuts = {
   heroCards: ["A♠", "3♣"],
   villainCards: ["K♦", "J♦"],
