@@ -1,35 +1,57 @@
+const suits = ["♠", "♥", "♦", "♣"];
+const ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
+const rankValues = Object.fromEntries(ranks.map((rank, index) => [rank, index + 2]));
+
+const opponentProfiles = [
+  { name: "Tight regular", description: "value-heavy and careful on scary runouts", payoffMultiplier: 0.5 },
+  { name: "Loose caller", description: "continues too wide after betting", payoffMultiplier: 1.1 },
+  { name: "Aggressive reg", description: "barrels pressure turns and rivers", payoffMultiplier: 0.8 },
+  { name: "Splashy whale", description: "overpays with one-pair hands", payoffMultiplier: 1.5 },
+  { name: "Nit", description: "shuts down when draws complete", payoffMultiplier: 0.25 }
+];
+
+const betFractions = [0.25, 0.33, 0.5, 0.66, 0.75, 1];
+
 const steps = [
   {
     key: "outs",
-    label: "Count the clean raw outs.",
+    label: "Count the next-card clean outs.",
     suffix: "outs",
     tolerance: 1,
-    answer: (hand) => hand.outs,
-    hint: "Start with the visible draw: flush cards, straight cards, and any clean overcards."
+    answer: (hand) => cleanOutsFor(hand),
+    hint: "Count unseen turn/river cards that leave Hero winning or tied against the dealt Villain hand."
   },
   {
     key: "discountedOuts",
-    label: "Estimate discounted outs.",
+    label: "Calculate discounted outs.",
     suffix: "outs",
-    tolerance: 1,
-    answer: (hand) => hand.discountedOuts,
-    hint: "Remove dirty cards for paired boards, dominated pairs, and reverse risk."
+    tolerance: 0.75,
+    answer: (hand) => discountedOutsFor(hand),
+    hint: "Wins count as 1 out and ties count as 0.5 outs. The target is calculated from the actual remaining deck."
   },
   {
     key: "drawEquity",
-    label: "Estimate equity from discounted outs.",
+    label: "Calculate exact next-card equity.",
     suffix: "%",
-    tolerance: 2,
+    tolerance: 1,
     answer: (hand) => drawEquityFor(hand),
-    hint: "Use discounted outs only: rule of 4 on the flop, rule of 2 on the turn."
+    hint: "Use exact discounted outs divided by the unseen deck. Do not use a rule-of-2 or rule-of-4 shortcut for the target."
   },
   {
     key: "potOdds",
-    label: "Estimate the direct pot-odds price.",
+    label: "Calculate the direct pot-odds price.",
     suffix: "%",
-    tolerance: 2,
+    tolerance: 1,
     answer: (hand) => potOddsFor(hand),
-    hint: "Call divided by final pot after you call."
+    hint: "Call amount divided by the final pot after Hero calls."
+  },
+  {
+    key: "impliedOdds",
+    label: "Calculate the implied-odds break-even price.",
+    suffix: "%",
+    tolerance: 1.5,
+    answer: (hand) => impliedOddsFor(hand),
+    hint: "Add the generated future payoff estimate to the final pot, then divide the call by that larger pot."
   },
   {
     key: "decision",
@@ -37,124 +59,13 @@ const steps = [
     suffix: "",
     tolerance: 0,
     answer: (hand) => shouldCallFor(hand) ? "call" : "fold",
-    hint: "Call when your estimated equity is at least the direct price the pot is laying."
-  }
-];
-
-const hands = [
-  {
-    title: "Turn nut-flush draw vs sticky caller",
-    hero: "A♠ 9♠",
-    board: "K♠ 7♠ 2♦ Q♥",
-    potStart: 60,
-    action: "Pot starts $60. Villain bets $30 on the turn; Hero must call $30 to continue.",
-    heroBetThisStreet: 0,
-    opponentBetThisStreet: 30,
-    pot: 90,
-    call: 30,
-    street: "Turn",
-    heroStack: 220,
-    opponentStack: 220,
-    opponent: "Loose-passive Villain: pays off one-pair hands too often",
-    outs: 9,
-    discountedOuts: 9,
-    note: "All nine spades are clean on the unpaired board and this is the nut-flush draw. The turn equity is about 18%, below the 25% direct price, so the disciplined table decision is a fold."
-  },
-  {
-    title: "Flop open-ender with deep stacks",
-    hero: "J♥ T♥",
-    board: "9♣ 8♦ 2♠",
-    potStart: 45,
-    action: "Pot starts $45. Villain continuation-bets $15 on the flop; Hero must call $15.",
-    heroBetThisStreet: 0,
-    opponentBetThisStreet: 15,
-    pot: 60,
-    call: 15,
-    street: "Flop",
-    heroStack: 300,
-    opponentStack: 285,
-    opponent: "Aggressive regular Villain: barrels often but can fold scary rivers",
-    outs: 8,
-    discountedOuts: 7,
-    note: "The straight has eight raw outs, discounted to seven because action can dry up or tough future spots can appear. Seven flop outs are about 28% equity, comfortably above the 20% direct price."
-  },
-  {
-    title: "Dominated overcards on a wet flop",
-    hero: "A♦ Q♣",
-    board: "J♠ 8♠ 3♥",
-    potStart: 35,
-    action: "Pot starts $35. Tight Villain bets $35 on the flop; Hero must call $35.",
-    heroBetThisStreet: 0,
-    opponentBetThisStreet: 35,
-    pot: 70,
-    call: 35,
-    street: "Flop",
-    heroStack: 180,
-    opponentStack: 170,
-    opponent: "Tight value-bettor Villain: strong range, rarely pays missed top pair",
-    outs: 6,
-    discountedOuts: 3,
-    note: "The six raw overcard outs are discounted hard because top pair can still be dominated and the wet board creates reverse risk. With only about 12% discounted equity and no realistic future help, this is a fold."
-  },
-  {
-    title: "Combo draw against a station",
-    hero: "Q♣ J♣",
-    board: "T♣ 9♣ 4♦",
-    potStart: 80,
-    action: "Pot starts $80. Calling-station Villain bets $40 on the flop; Hero must call $40.",
-    heroBetThisStreet: 0,
-    opponentBetThisStreet: 40,
-    pot: 120,
-    call: 40,
-    street: "Flop",
-    heroStack: 360,
-    opponentStack: 340,
-    opponent: "Calling-station Villain: hates folding made hands",
-    outs: 15,
-    discountedOuts: 13,
-    note: "After removing overlap and a couple dirty cards, thirteen discounted flop outs are still about 52% equity. That crushes the 25% direct price, so the call is clear."
-  },
-  {
-    title: "Gutshot facing a big turn bet",
-    hero: "7♦ 6♦",
-    board: "A♣ 5♠ 4♥ K♠",
-    potStart: 55,
-    action: "Pot starts $55. Nit Villain bets $45 on the turn; Hero must call $45.",
-    heroBetThisStreet: 0,
-    opponentBetThisStreet: 45,
-    pot: 100,
-    call: 45,
-    street: "Turn",
-    heroStack: 160,
-    opponentStack: 155,
-    opponent: "Nit Villain: folds when the obvious straight completes",
-    outs: 4,
-    discountedOuts: 3,
-    note: "The gutshot starts at four raw outs but one completion is discounted for poor realization and reverse risk. Three turn outs are only about 6% equity, far below the price."
-  },
-  {
-    title: "Nut-flush draw with fold-proof villain",
-    hero: "A♥ 5♥",
-    board: "K♥ 8♥ 6♣ 2♠",
-    potStart: 60,
-    action: "Pot starts $60. Splashy Villain bets $20 on the turn; Hero must call $20.",
-    heroBetThisStreet: 0,
-    opponentBetThisStreet: 20,
-    pot: 80,
-    call: 20,
-    street: "Turn",
-    heroStack: 240,
-    opponentStack: 210,
-    opponent: "Splashy whale Villain: overcalls rivers with any king",
-    outs: 9,
-    discountedOuts: 9,
-    note: "The nut-flush draw keeps all nine outs. Eighteen percent turn equity is close, but it is still under the 20% direct price, so this drill marks the table decision as a fold."
+    hint: "Call when exact next-card equity is at least the calculated implied break-even price."
   }
 ];
 
 const state = {
   mode: "step",
-  handIndex: randomHandIndex(),
+  hand: generateHand(),
   stepIndex: 0,
   selectedDecision: "",
   stepAwaitingNext: false
@@ -175,19 +86,72 @@ const elements = {
 };
 
 function currentHand() {
-  return hands[state.handIndex];
+  return state.hand;
 }
 
-function nextHandIndex() {
-  return randomHandIndex(state.handIndex);
+function createDeck() {
+  return suits.flatMap((suit) => ranks.map((rank) => `${rank}${suit}`));
 }
 
-function randomHandIndex(excludedIndex = null) {
-  const candidateIndexes = hands
-    .map((_, index) => index)
-    .filter((index) => hands.length === 1 || index !== excludedIndex);
+function drawCards(deck, count) {
+  return Array.from({ length: count }, () => deck.splice(randomInteger(deck.length), 1)[0]);
+}
 
-  return candidateIndexes[randomInteger(candidateIndexes.length)];
+function generateHand() {
+  const deck = createDeck();
+  const heroCards = drawCards(deck, 2);
+  const villainCards = drawCards(deck, 2);
+  const street = randomInteger(100) < 65 ? "Flop" : "Turn";
+  const boardCards = drawCards(deck, street === "Flop" ? 3 : 4);
+  const potStart = randomChipAmount(18, 120, 2);
+  const betFraction = betFractions[randomInteger(betFractions.length)];
+  const opponentBetThisStreet = Math.max(2, roundToChip(potStart * betFraction, 2));
+  const pot = potStart + opponentBetThisStreet;
+  const minimumStack = opponentBetThisStreet + 40;
+  const heroStack = randomChipAmount(minimumStack, 420, 5);
+  const opponentStack = randomChipAmount(minimumStack, 420, 5);
+  const opponent = opponentProfiles[randomInteger(opponentProfiles.length)];
+  const hand = {
+    heroCards,
+    villainCards,
+    boardCards,
+    hero: heroCards.join(" "),
+    villain: villainCards.join(" "),
+    board: boardCards.join(" "),
+    potStart,
+    heroBetThisStreet: 0,
+    opponentBetThisStreet,
+    pot,
+    call: opponentBetThisStreet,
+    street,
+    heroStack,
+    opponentStack,
+    opponent,
+    title: `${street} ${madeHandLabel(evaluateHand([...heroCards, ...boardCards]))} facing a ${betSizeLabel(opponentBetThisStreet, potStart)} bet`
+  };
+
+  hand.futurePayoff = futurePayoffFor(hand);
+  hand.action = `Pot starts ${money(potStart)}. ${opponent.name} bets ${money(opponentBetThisStreet)} on the ${street.toLowerCase()}; Hero must call ${money(opponentBetThisStreet)}.`;
+  hand.note = noteFor(hand);
+
+  return hand;
+}
+
+function randomChipAmount(min, max, increment) {
+  const stepsCount = Math.floor((max - min) / increment) + 1;
+  return min + randomInteger(stepsCount) * increment;
+}
+
+function roundToChip(amount, increment = 1) {
+  return Math.max(increment, Math.round(amount / increment) * increment);
+}
+
+function betSizeLabel(bet, potStart) {
+  const fraction = bet / potStart;
+  if (fraction < 0.4) return "small";
+  if (fraction < 0.7) return "half-pot";
+  if (fraction < 0.9) return "large";
+  return "pot-sized";
 }
 
 function randomInteger(maxExclusive) {
@@ -210,21 +174,174 @@ function randomInteger(maxExclusive) {
   return Math.floor(Math.random() * maxExclusive);
 }
 
-function cardsToCome(hand) {
-  return hand.street === "Flop" ? 2 : 1;
+function remainingDeckFor(hand) {
+  const usedCards = new Set([...hand.heroCards, ...hand.villainCards, ...hand.boardCards]);
+  return createDeck().filter((card) => !usedCards.has(card));
+}
+
+function nextCardOutcomes(hand) {
+  return remainingDeckFor(hand).map((nextCard) => {
+    const nextBoard = [...hand.boardCards, nextCard];
+    const result = compareHands(
+      evaluateHand([...hand.heroCards, ...nextBoard]),
+      evaluateHand([...hand.villainCards, ...nextBoard])
+    );
+
+    return { card: nextCard, result };
+  });
+}
+
+function cleanOutsFor(hand) {
+  return nextCardOutcomes(hand).filter(({ result }) => result >= 0).length;
+}
+
+function discountedOutsFor(hand) {
+  const outcomes = nextCardOutcomes(hand);
+  const discountedOuts = outcomes.reduce((total, { result }) => {
+    if (result > 0) return total + 1;
+    if (result === 0) return total + 0.5;
+    return total;
+  }, 0);
+
+  return roundToTenth(discountedOuts);
 }
 
 function drawEquityFor(hand) {
-  const ruleMultiplier = cardsToCome(hand) === 2 ? 4 : 2;
-  return Math.min(100, Math.round(hand.discountedOuts * ruleMultiplier));
+  return roundToTenth((discountedOutsFor(hand) / remainingDeckFor(hand).length) * 100);
 }
 
 function potOddsFor(hand) {
-  return Math.round((hand.call / (hand.pot + hand.call)) * 100);
+  return roundToTenth((hand.call / (hand.pot + hand.call)) * 100);
+}
+
+function effectiveStackAfterCall(hand) {
+  return Math.max(0, Math.min(hand.heroStack - hand.call, hand.opponentStack));
+}
+
+function futurePayoffFor(hand) {
+  const effectiveBehind = effectiveStackAfterCall(hand);
+  const streetMultiplier = hand.street === "Flop" ? 1.25 : 0.75;
+  const payoff = hand.call * hand.opponent.payoffMultiplier * streetMultiplier;
+  return Math.min(effectiveBehind, roundToChip(payoff, 1));
+}
+
+function impliedOddsFor(hand) {
+  return roundToTenth((hand.call / (hand.pot + hand.call + hand.futurePayoff)) * 100);
 }
 
 function shouldCallFor(hand) {
-  return drawEquityFor(hand) >= potOddsFor(hand);
+  return drawEquityFor(hand) >= impliedOddsFor(hand);
+}
+
+function roundToTenth(number) {
+  return Math.round(number * 10) / 10;
+}
+
+function cardRank(card) {
+  return card.slice(0, -1);
+}
+
+function cardSuit(card) {
+  return card.slice(-1);
+}
+
+function straightHighFromValues(values) {
+  const uniqueValues = [...new Set(values)].sort((a, b) => b - a);
+  if (uniqueValues.includes(14)) uniqueValues.push(1);
+
+  for (let index = 0; index <= uniqueValues.length - 5; index += 1) {
+    const window = uniqueValues.slice(index, index + 5);
+    if (window.every((value, offset) => value === window[0] - offset)) {
+      return window[0] === 1 ? 5 : window[0];
+    }
+  }
+
+  return null;
+}
+
+function evaluateHand(cards) {
+  const values = cards.map((card) => rankValues[cardRank(card)]).sort((a, b) => b - a);
+  const counts = new Map();
+  const suitsToValues = new Map(suits.map((suit) => [suit, []]));
+
+  cards.forEach((card) => {
+    const value = rankValues[cardRank(card)];
+    counts.set(value, (counts.get(value) || 0) + 1);
+    suitsToValues.get(cardSuit(card)).push(value);
+  });
+
+  const groups = [...counts.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => b.count - a.count || b.value - a.value);
+  const flushValues = [...suitsToValues.values()]
+    .find((suitedValues) => suitedValues.length >= 5)
+    ?.sort((a, b) => b - a);
+  const straightHigh = straightHighFromValues(values);
+  const straightFlushHigh = flushValues ? straightHighFromValues(flushValues) : null;
+
+  if (straightFlushHigh) return { score: [8, straightFlushHigh], label: "straight flush" };
+
+  const quads = groups.find((group) => group.count === 4);
+  if (quads) {
+    const kicker = values.find((value) => value !== quads.value);
+    return { score: [7, quads.value, kicker], label: "quads" };
+  }
+
+  const trips = groups.filter((group) => group.count === 3).map((group) => group.value);
+  const pairs = groups.filter((group) => group.count === 2).map((group) => group.value);
+  if (trips.length && (pairs.length || trips.length > 1)) {
+    const fullHousePair = trips.length > 1 ? trips[1] : pairs[0];
+    return { score: [6, trips[0], fullHousePair], label: "full house" };
+  }
+
+  if (flushValues) return { score: [5, ...flushValues.slice(0, 5)], label: "flush" };
+  if (straightHigh) return { score: [4, straightHigh], label: "straight" };
+
+  if (trips.length) {
+    const kickers = values.filter((value) => value !== trips[0]).slice(0, 2);
+    return { score: [3, trips[0], ...kickers], label: "three of a kind" };
+  }
+
+  if (pairs.length >= 2) {
+    const topPairs = pairs.slice(0, 2);
+    const kicker = values.find((value) => !topPairs.includes(value));
+    return { score: [2, ...topPairs, kicker], label: "two pair" };
+  }
+
+  if (pairs.length === 1) {
+    const kickers = values.filter((value) => value !== pairs[0]).slice(0, 3);
+    return { score: [1, pairs[0], ...kickers], label: "one pair" };
+  }
+
+  return { score: [0, ...values.slice(0, 5)], label: "high card" };
+}
+
+function compareHands(firstHand, secondHand) {
+  const length = Math.max(firstHand.score.length, secondHand.score.length);
+  for (let index = 0; index < length; index += 1) {
+    const firstValue = firstHand.score[index] || 0;
+    const secondValue = secondHand.score[index] || 0;
+    if (firstValue > secondValue) return 1;
+    if (firstValue < secondValue) return -1;
+  }
+
+  return 0;
+}
+
+function madeHandLabel(evaluation) {
+  return evaluation.label.replace(/^./, (character) => character.toUpperCase());
+}
+
+function noteFor(hand) {
+  const outcomes = nextCardOutcomes(hand);
+  const wins = outcomes.filter(({ result }) => result > 0).length;
+  const ties = outcomes.filter(({ result }) => result === 0).length;
+  const losses = outcomes.length - wins - ties;
+  const equity = drawEquityFor(hand);
+  const price = impliedOddsFor(hand);
+  const decision = shouldCallFor(hand) ? "call" : "fold";
+
+  return `Villain was dealt ${hand.villain}. ${wins} next cards win, ${ties} tie, and ${losses} lose against that hand. That is ${discountedOutsFor(hand)} discounted outs from ${outcomes.length} unseen cards, or ${equity}% exact next-card equity. The implied break-even price is ${price}%, so this is a ${decision}.`;
 }
 
 function render() {
@@ -259,8 +376,6 @@ function boardLabelFor(hand) {
 }
 
 function tableFor(hand) {
-  const villainStyle = hand.opponent.replace(/^.*?Villain:\s*/, "");
-
   return `
     <section class="poker-table" aria-label="Poker table situation">
       <div class="felt-ring" aria-hidden="true"></div>
@@ -271,7 +386,7 @@ function tableFor(hand) {
         <div class="player-panel">
           <p class="player-name">Villain</p>
           <span class="player-stack">${money(hand.opponentStack)}</span>
-          <span class="player-style">${villainStyle}</span>
+          <span class="player-style">${hand.opponent.description}</span>
         </div>
         <div class="hole-cards villain-cards" aria-hidden="true">
           <span class="card back">?</span><span class="card back">?</span>
@@ -325,7 +440,7 @@ function renderStepMode(hand) {
   elements.answerLabel.textContent = step.label;
   elements.inputSlot.innerHTML = inputFor(step.key, step.label);
   state.stepAwaitingNext = false;
-  elements.submitButton.textContent = "Check";
+  elements.submitButton.textContent = "Submit answer";
   setAnswerControlsDisabled(false);
   elements.feedback.className = "feedback";
   elements.feedback.innerHTML = `<strong>Tip:</strong> ${step.hint}`;
@@ -336,18 +451,19 @@ function renderWholeMode(hand) {
   elements.stepProgress.hidden = true;
   elements.answerLabel.textContent = "Do the full hand in your head, then enter every answer.";
   elements.inputSlot.innerHTML = `
-    <input id="outsInput" name="outs" type="number" min="0" step="1" inputmode="numeric" placeholder="Raw outs" aria-label="Raw outs" required />
+    <input id="outsInput" name="outs" type="number" min="0" step="1" inputmode="numeric" placeholder="Clean outs" aria-label="Clean outs" required />
     <input id="discountedOutsInput" name="discountedOuts" type="number" min="0" step="0.5" inputmode="decimal" placeholder="Discounted outs" aria-label="Discounted outs" required />
-    <input id="drawEquityInput" name="drawEquity" type="number" min="0" step="1" inputmode="numeric" placeholder="Discounted equity %" aria-label="Discounted equity percent" required />
-    <input id="potOddsInput" name="potOdds" type="number" min="0" step="1" inputmode="numeric" placeholder="Pot price %" aria-label="Direct pot odds percent" required />
+    <input id="drawEquityInput" name="drawEquity" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Exact equity %" aria-label="Exact next-card equity percent" required />
+    <input id="potOddsInput" name="potOdds" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Pot price %" aria-label="Direct pot odds percent" required />
+    <input id="impliedOddsInput" name="impliedOdds" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Implied price %" aria-label="Implied odds break-even percent" required />
     ${decisionChoices("wholeDecision")}
   `;
   state.selectedDecision = "";
   state.stepAwaitingNext = false;
-  elements.submitButton.textContent = "Check";
+  elements.submitButton.textContent = "Submit answers";
   setAnswerControlsDisabled(false);
   elements.feedback.className = "feedback";
-  elements.feedback.innerHTML = `<strong>Rapid-fire:</strong> Fill the table-read answers, then check the hand once.`;
+  elements.feedback.innerHTML = `<strong>Rapid-fire:</strong> Fill the calculated answers, then submit the hand once.`;
   focusFirstInput();
 }
 
@@ -357,6 +473,7 @@ function labelForPill(key) {
     discountedOuts: "Discount",
     drawEquity: "Equity",
     potOdds: "Price",
+    impliedOdds: "Implied",
     decision: "Call?"
   }[key];
 }
@@ -367,7 +484,7 @@ function inputFor(key, label) {
   }
 
   const placeholder = steps.find((step) => step.key === key)?.suffix || "";
-  return `<input id="answerInput" name="answer" type="number" min="0" step="0.5" inputmode="decimal" placeholder="${placeholder}" aria-label="${label}" required />`;
+  return `<input id="answerInput" name="answer" type="number" min="0" step="0.1" inputmode="decimal" placeholder="${placeholder}" aria-label="${label}" required />`;
 }
 
 function decisionChoices(name) {
@@ -427,6 +544,7 @@ function checkWholeAnswers(formData) {
     discountedOuts: Number(formData.get("discountedOuts")),
     drawEquity: Number(formData.get("drawEquity")),
     potOdds: Number(formData.get("potOdds")),
+    impliedOdds: Number(formData.get("impliedOdds")),
     decision: state.selectedDecision
   };
 
@@ -469,19 +587,28 @@ function evaluateAnswer(step, expected, received) {
     correct,
     message: correct
       ? `<strong>Close enough.</strong> Target was ${target}.`
-      : `<strong>Try again.</strong> Target is about ${target}; your answer was outside the margin.`
+      : `<strong>Try again.</strong> Target is ${target}; your answer was outside the margin.`
   };
 }
 
 function explanationFor(step, hand, expected) {
+  if (step.key === "outs") {
+    return `${expected} unseen cards leave Hero winning or tied on the next street.`;
+  }
+  if (step.key === "discountedOuts") {
+    return `Wins count as 1 out and ties count as 0.5 outs, for ${expected} discounted outs.`;
+  }
   if (step.key === "drawEquity") {
-    return `${hand.discountedOuts} discounted outs × ${cardsToCome(hand) === 2 ? 4 : 2} ≈ ${expected}%.`;
+    return `${discountedOutsFor(hand)} discounted outs / ${remainingDeckFor(hand).length} unseen cards = ${expected}%.`;
   }
   if (step.key === "potOdds") {
-    return `$${hand.call} / ($${hand.pot} + $${hand.call}) ≈ ${expected}%.`;
+    return `${money(hand.call)} / (${money(hand.pot)} + ${money(hand.call)}) = ${expected}%.`;
+  }
+  if (step.key === "impliedOdds") {
+    return `${money(hand.call)} / (${money(hand.pot)} + ${money(hand.call)} + ${money(hand.futurePayoff)} future payoff) = ${expected}%.`;
   }
   if (step.key === "decision") {
-    return `${drawEquityFor(hand)}% discounted-out equity vs ${potOddsFor(hand)}% direct pot price. ${hand.note}`;
+    return `${drawEquityFor(hand)}% exact next-card equity vs ${impliedOddsFor(hand)}% implied break-even price. ${hand.note}`;
   }
   return hand.note;
 }
@@ -497,8 +624,8 @@ function setAnswerControlsDisabled(isDisabled) {
   });
 }
 
-function resetHand(index = state.handIndex) {
-  state.handIndex = index;
+function resetHand(hand = state.hand) {
+  state.hand = hand;
   state.stepIndex = 0;
   state.selectedDecision = "";
   state.stepAwaitingNext = false;
@@ -515,7 +642,7 @@ elements.wholeMode.addEventListener("click", () => {
   resetHand();
 });
 
-elements.newHand.addEventListener("click", () => resetHand(nextHandIndex()));
+elements.newHand.addEventListener("click", () => resetHand(generateHand()));
 
 elements.answerForm.addEventListener("click", (event) => {
   const button = event.target.closest("[data-choice]");

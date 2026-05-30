@@ -2,7 +2,7 @@
   "name": "poker-estimation",
   "version": "1.0.0",
   "private": true,
-  "description": "Rapid-fire poker estimation drills for outs, pot odds, and call decisions.",
+  "description": "Rapid-fire poker estimation drills with random hands, exact outs, pot odds, implied odds, and call decisions.",
   "scripts": {
     "start": "python3 -m http.server 4173",
     "test": "node --check app.js"
