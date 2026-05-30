@@ -19,7 +19,7 @@ const steps = [
     suffix: "outs",
     tolerance: 1,
     answer: (hand) => cleanOutsFor(hand),
-    hint: "Count unseen turn/river cards that improve Hero's hand and leave Hero winning or tied against the dealt Villain hand."
+    hint: "Count unseen turn/river cards that improve Hero's hand and leave Hero winning outright against the dealt Villain hand."
   },
   {
     key: "discountedOuts",
@@ -27,7 +27,7 @@ const steps = [
     suffix: "outs",
     tolerance: 0.75,
     answer: (hand) => discountedOutsFor(hand),
-    hint: "Wins count as 1 out and ties count as 0.5 outs. The target is calculated from the actual remaining deck."
+    hint: "Count clean improving cards that make Hero win outright. The target is calculated from the actual remaining deck."
   },
   {
     key: "drawEquity",
@@ -199,7 +199,7 @@ function nextCardOutcomes(hand) {
 }
 
 function cleanOutsFor(hand) {
-  return nextCardOutcomes(hand).filter(({ improvesHero, result }) => improvesHero && result >= 0).length;
+  return nextCardOutcomes(hand).filter(({ improvesHero, result }) => improvesHero && result > 0).length;
 }
 
 function discountedOutsFor(hand) {
@@ -207,7 +207,6 @@ function discountedOutsFor(hand) {
   const discountedOuts = outcomes.reduce((total, { improvesHero, result }) => {
     if (!improvesHero) return total;
     if (result > 0) return total + 1;
-    if (result === 0) return total + 0.5;
     return total;
   }, 0);
 
@@ -358,7 +357,7 @@ function noteFor(hand) {
   const price = impliedOddsFor(hand);
   const decision = shouldCallFor(hand) ? "call" : "fold";
 
-  return `Villain was dealt ${hand.villain}. ${cleanOuts} next cards improve Hero and leave Hero winning or tied, worth ${discountedOuts} discounted outs. For equity, ${wins} next cards win, ${ties} tie, and ${losses} lose from ${outcomes.length} unseen cards, or ${equity}% exact next-card equity. The implied break-even price is ${price}%, so this is a ${decision}.`;
+  return `Villain was dealt ${hand.villain}. ${cleanOuts} next cards improve Hero and win outright, worth ${discountedOuts} discounted outs. For equity, ${wins} next cards win, ${ties} tie, and ${losses} lose from ${outcomes.length} unseen cards, or ${equity}% exact next-card equity. The implied break-even price is ${price}%, so this is a ${decision}.`;
 }
 
 function render() {
@@ -610,10 +609,10 @@ function evaluateAnswer(step, expected, received) {
 
 function explanationFor(step, hand, expected) {
   if (step.key === "outs") {
-    return `${expected} unseen cards improve Hero and leave Hero winning or tied on the next street.`;
+    return `${expected} unseen cards improve Hero and win outright on the next street.`;
   }
   if (step.key === "discountedOuts") {
-    return `Clean improving wins count as 1 out and clean improving ties count as 0.5 outs, for ${expected} discounted outs.`;
+    return `Clean improving wins count as 1 out, for ${expected} discounted outs.`;
   }
   if (step.key === "drawEquity") {
     return `All next-card wins and ties from ${remainingDeckFor(hand).length} unseen cards = ${expected}%.`;

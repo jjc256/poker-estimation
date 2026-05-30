@@ -65,3 +65,23 @@ assert.deepEqual(cleanCards, ["3♠", "3♣", "7♦", "7♣"].sort());
 assert.equal(context.__poker.cleanOutsFor(bottomTwoPairAhead), 4);
 assert.equal(context.__poker.discountedOutsFor(bottomTwoPairAhead), 4);
 assert.equal(context.__poker.drawEquityFor(bottomTwoPairAhead), 88.9);
+
+const turnChopOnlyDraw = {
+  heroCards: ["A♥", "K♥"],
+  villainCards: ["A♣", "K♣"],
+  boardCards: ["Q♦", "J♠", "2♦", "3♥"]
+};
+
+const improvingChops = Array.from(
+  context.__poker
+    .nextCardOutcomes(turnChopOnlyDraw)
+    .filter(({ improvesHero, result }) => improvesHero && result === 0)
+    .map(({ card }) => card)
+).sort();
+
+assert.ok(improvingChops.includes("T♠"));
+assert.ok(improvingChops.includes("T♥"));
+assert.ok(improvingChops.includes("T♦"));
+assert.ok(improvingChops.includes("T♣"));
+assert.equal(context.__poker.cleanOutsFor(turnChopOnlyDraw), 0);
+assert.equal(context.__poker.discountedOutsFor(turnChopOnlyDraw), 0);
