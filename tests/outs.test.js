@@ -57,15 +57,24 @@ const bottomTwoPairAhead = {
 const cleanCards = Array.from(
   context.__poker
     .nextCardOutcomes(bottomTwoPairAhead)
-    .filter(({ improvesHero, result }) => improvesHero && result >= 0)
+    .filter(({ currentResult, result }) => currentResult <= 0 && result > 0)
     .map(({ card }) => card)
 ).sort();
 
-assert.deepEqual(cleanCards, ["3♠", "3♣", "7♦", "7♣"].sort());
-assert.equal(context.__poker.cleanOutsFor(bottomTwoPairAhead), 4);
-assert.equal(context.__poker.discountedOutsFor(bottomTwoPairAhead), 4);
+assert.deepEqual(cleanCards, []);
+assert.equal(context.__poker.cleanOutsFor(bottomTwoPairAhead), 0);
+assert.equal(context.__poker.discountedOutsFor(bottomTwoPairAhead), 0);
 assert.equal(context.__poker.showdownOutcomes(bottomTwoPairAhead).length, 990);
 assert.equal(context.__poker.drawEquityFor(bottomTwoPairAhead), 74.5);
+
+const aceHighAlreadyAhead = {
+  heroCards: ["A♥", "J♦"],
+  villainCards: ["K♣", "Q♦"],
+  boardCards: ["5♥", "3♦", "6♠", "5♠"]
+};
+
+assert.equal(context.__poker.cleanOutsFor(aceHighAlreadyAhead), 0);
+assert.equal(context.__poker.discountedOutsFor(aceHighAlreadyAhead), 0);
 
 const turnChopOnlyDraw = {
   heroCards: ["A♥", "K♥"],

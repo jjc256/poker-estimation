@@ -19,7 +19,7 @@ const steps = [
     suffix: "outs",
     tolerance: 1,
     answer: (hand) => cleanOutsFor(hand),
-    hint: "Count unseen turn/river cards that improve Hero's hand and leave Hero winning outright against the dealt Villain hand."
+    hint: "Count unseen turn/river cards that turn Hero from not winning into an outright winner against the dealt Villain hand."
   },
   {
     key: "discountedOuts",
@@ -27,7 +27,7 @@ const steps = [
     suffix: "outs",
     tolerance: 0.75,
     answer: (hand) => discountedOutsFor(hand),
-    hint: "Count clean improving cards that make Hero win outright. The target is calculated from the actual remaining deck."
+    hint: "Count clean cards that turn Hero from not winning into an outright winner. The target is calculated from the actual remaining deck."
   },
   {
     key: "drawEquity",
@@ -181,6 +181,10 @@ function remainingDeckFor(hand) {
 
 function nextCardOutcomes(hand) {
   const currentHeroHand = evaluateHand([...hand.heroCards, ...hand.boardCards]);
+  const currentResult = compareHands(
+    currentHeroHand,
+    evaluateHand([...hand.villainCards, ...hand.boardCards])
+  );
 
   return remainingDeckFor(hand).map((nextCard) => {
     const nextBoard = [...hand.boardCards, nextCard];
@@ -192,6 +196,7 @@ function nextCardOutcomes(hand) {
 
     return {
       card: nextCard,
+      currentResult,
       improvesHero: compareHands(nextHeroHand, currentHeroHand) > 0,
       result
     };
@@ -199,13 +204,13 @@ function nextCardOutcomes(hand) {
 }
 
 function cleanOutsFor(hand) {
-  return nextCardOutcomes(hand).filter(({ improvesHero, result }) => improvesHero && result > 0).length;
+  return nextCardOutcomes(hand).filter(({ currentResult, result }) => currentResult <= 0 && result > 0).length;
 }
 
 function discountedOutsFor(hand) {
   const outcomes = nextCardOutcomes(hand);
-  const discountedOuts = outcomes.reduce((total, { improvesHero, result }) => {
-    if (!improvesHero) return total;
+  const discountedOuts = outcomes.reduce((total, { currentResult, result }) => {
+    if (currentResult > 0) return total;
     if (result > 0) return total + 1;
     return total;
   }, 0);
@@ -399,7 +404,7 @@ function noteFor(hand) {
   const price = impliedOddsFor(hand);
   const decision = shouldCallFor(hand) ? "call" : "fold";
 
-  return `Villain was dealt ${hand.villain}. ${cleanOuts} next cards improve Hero and win outright, worth ${discountedOuts} discounted outs. For equity, ${wins} runouts win, ${ties} tie, and ${losses} lose from ${outcomes.length} possible runouts, or ${equity}% exact showdown equity. The implied break-even price is ${price}%, so this is a ${decision}.`;
+  return `Villain was dealt ${hand.villain}. ${cleanOuts} next cards turn Hero from not winning into an outright winner, worth ${discountedOuts} discounted outs. For equity, ${wins} runouts win, ${ties} tie, and ${losses} lose from ${outcomes.length} possible runouts, or ${equity}% exact showdown equity. The implied break-even price is ${price}%, so this is a ${decision}.`;
 }
 
 function render() {
@@ -651,10 +656,10 @@ function evaluateAnswer(step, expected, received) {
 
 function explanationFor(step, hand, expected) {
   if (step.key === "outs") {
-    return `${expected} unseen cards improve Hero and win outright on the next street.`;
+    return `${expected} unseen cards turn Hero from not winning into an outright winner on the next street.`;
   }
   if (step.key === "discountedOuts") {
-    return `Clean improving wins count as 1 out, for ${expected} discounted outs.`;
+    return `Clean cards that turn Hero into an outright winner count as 1 out, for ${expected} discounted outs.`;
   }
   if (step.key === "drawEquity") {
     return `All showdown wins and ties across ${showdownOutcomes(hand).length} possible runouts = ${expected}%.`;
