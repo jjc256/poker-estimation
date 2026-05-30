@@ -12,7 +12,7 @@
         <p class="eyebrow">Rapid-fire poker math</p>
         <h1>Read the table. Make the call.</h1>
         <p>
-          A poker-table drill for pot size, stack depth, current bets, price, implied odds, and fast call/fold decisions.
+          A cleaner table drill with freshly dealt random spots, normal poker-client information, and exact calculated ground truth after you answer.
         </p>
       </section>
 
@@ -43,7 +43,7 @@
         <form id="answerForm" class="answer-panel">
           <label id="answerLabel" for="answerInput">Answer</label>
           <div id="inputSlot" class="input-row"></div>
-          <button class="primary" type="submit">Check</button>
+          <button class="primary" type="submit">Submit answer</button>
         </form>
 
         <div id="feedback" class="feedback" aria-live="polite"></div>
@@ -52,9 +52,9 @@
       <section class="reference-card">
         <h2>Table-reading order</h2>
         <ul>
-          <li>Read pot, bet, call amount, and final pot before doing equity math.</li>
-          <li>Use stack badges to cap realistic implied payoff.</li>
-          <li>Call when discounted equity beats the displayed implied break-even price.</li>
+          <li>Start from the felt: board texture, pot, facing bet, and the amount to call.</li>
+          <li>Estimate the next-card clean outs, discounted outs, exact equity, direct price, and implied price without relying on table overlays.</li>
+          <li>Call when the exact next-card equity clears the calculated implied break-even price.</li>
         </ul>
       </section>
     </main>
